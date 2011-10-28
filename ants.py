@@ -45,6 +45,7 @@ class Ants():
         self.ant_list = {}
         self.dead_list = defaultdict(list)
         self.food_list = []
+        self.water_list = []
         self.turntime = 0
         self.loadtime = 0
         self.turn_start_time = None
@@ -112,6 +113,7 @@ class Ants():
                     col = int(tokens[2])
                     if tokens[0] == 'w':
                         self.map[row][col] = WATER
+                        self.water_list.append((row, col))
                     elif tokens[0] == 'f':
                         self.map[row][col] = FOOD
                         self.food_list.append((row, col))

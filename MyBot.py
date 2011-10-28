@@ -13,8 +13,17 @@ class MyBot:
     # after the bot has received the game settings
     # the ants class is created and setup by the Ants.run method
     def do_setup(self, ants):
+#        self.loadtime = ants.loadtime
+        self.rows = ants.rows
+        self.cols = ants.cols
+        self.turns = ants.turns
+        self.vr = ants.viewradius2
+        self.fr = ants.spawnradius2
+        #self.ps = ants.player_seed
+
         self.hills = []
         self.unseen = []
+        self.water = set()
         for row in range(ants.rows):
             for col in range(ants.cols):
                 self.unseen.append((row, col))
@@ -23,50 +32,73 @@ class MyBot:
     # the ants class has the game state and is updated by the Ants.run method
     # it also has several helper methods to use
     def do_turn(self, ants):
+        # ants that have'nt moved yet
+        free_ants = ants.my_ants()[:]
         
-            
-        # track all moves, prevent collisions
-        orders = {}
+        # update new water space found
+        self.water.update(set(ants.water_list))
+        
+        # food spaces chosen by ant to hunt by
+        food_targets = set()
+        
+        # remove water from unseen spaces
+        for water in ants.water_list:
+            if water in self.unseen:
+                self.unseen.remove(water)        
+        
+        # track all moves, prevent collisions and prevent stepping on own hill
+        prox_dest = set(ants.my_hills())
+        
         def do_move_direction(loc, direction):
             new_loc = ants.destination(loc, direction)
-            if(ants.unoccupied(new_loc) and new_loc not in orders):
+            if(ants.unoccupied(new_loc) and new_loc not in prox_dest):
                 ants.issue_order((loc, direction))
-                orders[new_loc] = loc
+                prox_dest.add(new_loc)
+                free_ants.remove(loc)
                 return True
             else:
                 return False
-                
-        targets = {}
+        
         def do_move_location(loc, dest):
             directions = ants.direction(loc, dest)
             for direction in directions:
                 if do_move_direction(loc, direction):
-                    targets[dest] = loc
                     return True
             return False
         
-        # prevent stepping on own hill
-        for hill_loc in ants.my_hills():
-            orders[hill_loc] = None
+        
+        
+        # check if we still have time left to calculate more orders
+#        if ants.time_remaining() < 10:
+#            return
         
         # find close food
         ant_dist = []
         for food_loc in ants.food():
-            for ant_loc in ants.my_ants():
+            for ant_loc in free_ants:
                 dist = ants.distance(ant_loc, food_loc)
                 ant_dist.append((dist, ant_loc, food_loc))
         ant_dist.sort()
         for dist, ant_loc, food_loc in ant_dist:
-            if food_loc not in targets and ant_loc not in targets.values():
-                do_move_location(ant_loc, food_loc)
-
+            if food_loc not in food_targets and ant_loc in free_ants:
+                if do_move_location(ant_loc, food_loc):
+                    food_targets.add(food_loc)
+                
+        
+        # check if we still have time left to calculate more orders
+#        if ants.time_remaining() < 10:
+#            return
 
         # unblock own hill
         for hill_loc in ants.my_hills():
-            if hill_loc in ants.my_ants() and hill_loc not in orders.values():
+            if hill_loc in free_ants:
                 for direction in ('s','e','w','n'):
                     if do_move_direction(hill_loc, direction):
                         break
+        
+        # check if we still have time left to calculate more orders
+#        if ants.time_remaining() < 10:
+#            return
 
         # attack hills
         for hill_loc, hill_owner in ants.enemy_hills():
@@ -74,30 +106,30 @@ class MyBot:
                 self.hills.append(hill_loc)        
         ant_dist = []
         for hill_loc in self.hills:
-            for ant_loc in ants.my_ants():
-                if ant_loc not in orders.values():
-                    dist = ants.distance(ant_loc, hill_loc)
-                    ant_dist.append((dist, ant_loc))
+            for ant_loc in free_ants:
+                dist = ants.distance(ant_loc, hill_loc)
+                ant_dist.append((dist, ant_loc))
         ant_dist.sort()
         for dist, ant_loc in ant_dist:
             do_move_location(ant_loc, hill_loc)
 
-
+        # check if we still have time left to calculate more orders
+#        if ants.time_remaining() < 10:
+#            return
 
         # explore unseen areas
         for loc in self.unseen[:]:
             if ants.visible(loc):
                 self.unseen.remove(loc)
-        for ant_loc in ants.my_ants():
-            if ant_loc not in orders.values():
-                unseen_dist = []
-                for unseen_loc in self.unseen:
-                    dist = ants.distance(ant_loc, unseen_loc)
-                    unseen_dist.append((dist, unseen_loc))
-                unseen_dist.sort()
-                for dist, unseen_loc in unseen_dist:
-                    if do_move_location(ant_loc, unseen_loc):
-                        break
+        for ant_loc in free_ants:
+            unseen_dist = []
+            for unseen_loc in self.unseen:
+                dist = ants.distance(ant_loc, unseen_loc)
+                unseen_dist.append((dist, unseen_loc))
+            unseen_dist.sort()
+            for dist, unseen_loc in unseen_dist:
+                if do_move_location(ant_loc, unseen_loc):
+                    break
             
 if __name__ == '__main__':
     # psyco will speed up python a little, but is not needed
