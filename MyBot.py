@@ -28,10 +28,21 @@ class MyBot:
             for col in range(ants.cols):
                 self.unseen.append((row, col))
     
+    def possible_moves(self, loc):
+        directions = list(AIM.keys())
+        moves = []
+        for direction in directions:
+            moves.append(self.ants.destination(loc, direction))
+        for loc in moves[:]:
+            if loc in self.water:
+                moves.remove(loc)
+        return moves
+    
     # do turn is run once per turn
     # the ants class has the game state and is updated by the Ants.run method
     # it also has several helper methods to use
     def do_turn(self, ants):
+        self.ants = ants
         # ants that have'nt moved yet
         free_ants = ants.my_ants()[:]
         
@@ -66,12 +77,6 @@ class MyBot:
                     return True
             return False
         
-        
-        
-        # check if we still have time left to calculate more orders
-#        if ants.time_remaining() < 10:
-#            return
-        
         # find close food
         ant_dist = []
         for food_loc in ants.food():
@@ -97,8 +102,8 @@ class MyBot:
                         break
         
         # check if we still have time left to calculate more orders
-#        if ants.time_remaining() < 10:
-#            return
+        if ants.time_remaining() < 10:
+            return
 
         # attack hills
         for hill_loc, hill_owner in ants.enemy_hills():
