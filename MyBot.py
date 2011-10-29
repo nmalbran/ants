@@ -21,7 +21,7 @@ class MyBot:
         # enemy's hills
         self.hills = []
         # unseen spaces
-        self.unseen = []
+        self.unseen = set()
         # water spaces
         self.water = set()
         # spaces where ants will go
@@ -39,18 +39,13 @@ class MyBot:
         self.fr = ants.spawnradius2
         #self.ps = ants.player_seed
         
-        for row in range(ants.rows):
-            for col in range(ants.cols):
-                self.unseen.append((row, col))
+        rows = range(ants.rows)
+        cols = range(ants.cols)
+        self.unseen = [ (r,c) for r in rows for c in cols ]
     
     def possible_moves(self, loc):
-        directions = ROSE
-        moves = []
-        for direction in directions:
-            moves.append(self.ants.destination(loc, direction))
-        for loc in moves[:]:
-            if loc in self.water:
-                moves.remove(loc)
+        d = self.ants.destination
+        moves = [ loc for loc in [ d(loc, direction) for direction in ROSE ] if loc not in self.water ]
         return moves
     
     def do_move_direction(self, loc, direction, free_ants):
@@ -65,7 +60,7 @@ class MyBot:
     
     def do_move_location(self, loc, dest, free_ants):
         directions = self.ants.direction(loc, dest)
-        shuffle(directions)
+        #shuffle(directions)
         for direction in directions:
             if self.do_move_direction(loc, direction, free_ants):
                 return True
@@ -84,9 +79,8 @@ class MyBot:
         self.water.update(set(ants.water_list))
         
         # remove water from unseen spaces
-        for water in ants.water_list:
-            if water in self.unseen:
-                self.unseen.remove(water)        
+        #self.unseen.difference_update(set(ants.water_list))
+        #self.unseen = [ i for i in self.unseen if i not in set(ants.water_list)]
         
         # track all moves, prevent collisions and prevent stepping on own hill
         self.prox_dest = set(ants.my_hills())
@@ -110,16 +104,15 @@ class MyBot:
         
         # find close food
         for ant_loc in free_ants:
-            path = self.path_finder.BFSr(ant_loc, set(ants.food())-self.food_targets, self.possible_moves)
+            path = self.path_finder.BFS(ant_loc, set(ants.food())-self.food_targets, self.possible_moves)
             if len(path) > 0:
                 if self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
                     self.food_targets.add(path[0][2])
                     self.orders[path[0][1][ant_loc]] = (path[0][2],path[0][1])
                     self.working_ants.append(path[0][1][ant_loc])
-        
-        # check if we still have time left to calculate more orders
-#        if ants.time_remaining() < 10:
-#            return
+            # check if we still have time left to calculate more orders
+            if ants.time_remaining() < 10:
+                return
 
         # unblock own hill
         for hill_loc in ants.my_hills():
@@ -146,13 +139,14 @@ class MyBot:
             self.do_move_location(ant_loc, hill_loc, free_ants)
 
         # check if we still have time left to calculate more orders
-#        if ants.time_remaining() < 10:
-#            return
+        if ants.time_remaining() < 10:
+            return
 
         # explore unseen areas
         for loc in self.unseen[:]:
             if ants.visible(loc):
                 self.unseen.remove(loc)
+                
         for ant_loc in free_ants:
             unseen_dist = []
             for unseen_loc in self.unseen:
@@ -162,6 +156,8 @@ class MyBot:
             for dist, unseen_loc in unseen_dist:
                 if self.do_move_location(ant_loc, unseen_loc, free_ants):
                     break
+            if ants.time_remaining() < 10:
+                return
             
 if __name__ == '__main__':
     # psyco will speed up python a little, but is not needed
