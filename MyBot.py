@@ -10,6 +10,18 @@ class MyBot:
     def __init__(self):
         # define class level variables, will be remembered between turns
         self.path_finder = PathFinder()
+        # orders already asigned
+        self.orders = {}
+        # ants working in orders
+        self.working_ants = []
+        # food spaces being hunted
+        self.food_targets = set()
+        # enemy's hills
+        self.hills = []
+        # unseen spaces
+        self.unseen = []
+        # water spaces
+        self.water = set()
     
     # do_setup is run once at the start of the game
     # after the bot has received the game settings
@@ -22,16 +34,13 @@ class MyBot:
         self.vr = ants.viewradius2
         self.fr = ants.spawnradius2
         #self.ps = ants.player_seed
-
-        self.hills = []
-        self.unseen = []
-        self.water = set()
+        
         for row in range(ants.rows):
             for col in range(ants.cols):
                 self.unseen.append((row, col))
     
     def possible_moves(self, loc):
-        directions = list(AIM.keys())
+        directions = ('n','e','s','w')
         moves = []
         for direction in directions:
             moves.append(self.ants.destination(loc, direction))
@@ -51,9 +60,6 @@ class MyBot:
         
         # update new water space found
         self.water.update(set(ants.water_list))
-        
-        # food spaces chosen by ant to hunt by
-        food_targets = set()
         
         # remove water from unseen spaces
         for water in ants.water_list:
@@ -81,26 +87,31 @@ class MyBot:
                     return True
             return False
         
-        # find close food
-#        ant_dist = []
-#        for food_loc in ants.food():
-#            for ant_loc in free_ants:
-#                dist = ants.distance(ant_loc, food_loc)
-#                ant_dist.append((dist, ant_loc, food_loc))
-#        ant_dist.sort()
-#        for dist, ant_loc, food_loc in ant_dist:
-#            if food_loc not in food_targets and ant_loc in free_ants:
-#                if do_move_location(ant_loc, food_loc):
-#                    food_targets.add(food_loc)
+        new_orders = {}
+        # work in orders
+        for ant_loc in self.working_ants[:]:
+            # if ant is still alive
+            if ant_loc in free_ants:
+                # if food still exist, go for it
+                if self.orders[ant_loc][0] in ants.food():
+                    new_loc = self.orders[ant_loc][1][ant_loc]
+                    if do_move_location(ant_loc, new_loc):
+                        new_orders[new_loc] = self.orders[ant_loc]
+                    else:
+                        new_orders[ant_loc] = self.orders[ant_loc]
+                # if food disappear or ant is dead, cancel order
+        self.orders = new_orders
+        self.working_ants = self.orders.keys()
         
+        
+        # find close food
         for ant_loc in free_ants:
-            path = self.path_finder.BFS(ant_loc, set(ants.food())-food_targets, self.possible_moves)
-            if len(path) >0:
+            path = self.path_finder.BFS(ant_loc, set(ants.food())-self.food_targets, self.possible_moves)
+            if len(path) > 0:
                 if do_move_location(ant_loc, path[0][1][ant_loc]):
-                    food_targets.add(path[0][2])
- 
- 
-                
+                    self.food_targets.add(path[0][2])
+                    self.orders[path[0][1][ant_loc]] = (path[0][2],path[0][1])
+                    self.working_ants.append(path[0][1][ant_loc])
         
         # check if we still have time left to calculate more orders
 #        if ants.time_remaining() < 10:
@@ -109,7 +120,7 @@ class MyBot:
         # unblock own hill
         for hill_loc in ants.my_hills():
             if hill_loc in free_ants:
-                for direction in ('s','e','w','n'):
+                for direction in ('n','e','s','w'):
                     if do_move_direction(hill_loc, direction):
                         break
         
