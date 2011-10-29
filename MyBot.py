@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 from ants import *
+from PathFinder import PathFinder
+from random import shuffle
 
 # define a class with a do_turn method
 # the Ants.run method will parse and update bot input
@@ -7,7 +9,7 @@ from ants import *
 class MyBot:
     def __init__(self):
         # define class level variables, will be remembered between turns
-        pass
+        self.path_finder = PathFinder()
     
     # do_setup is run once at the start of the game
     # after the bot has received the game settings
@@ -43,6 +45,7 @@ class MyBot:
     # it also has several helper methods to use
     def do_turn(self, ants):
         self.ants = ants
+    
         # ants that have'nt moved yet
         free_ants = ants.my_ants()[:]
         
@@ -72,22 +75,31 @@ class MyBot:
         
         def do_move_location(loc, dest):
             directions = ants.direction(loc, dest)
+            shuffle(directions)
             for direction in directions:
                 if do_move_direction(loc, direction):
                     return True
             return False
         
         # find close food
-        ant_dist = []
-        for food_loc in ants.food():
-            for ant_loc in free_ants:
-                dist = ants.distance(ant_loc, food_loc)
-                ant_dist.append((dist, ant_loc, food_loc))
-        ant_dist.sort()
-        for dist, ant_loc, food_loc in ant_dist:
-            if food_loc not in food_targets and ant_loc in free_ants:
-                if do_move_location(ant_loc, food_loc):
-                    food_targets.add(food_loc)
+#        ant_dist = []
+#        for food_loc in ants.food():
+#            for ant_loc in free_ants:
+#                dist = ants.distance(ant_loc, food_loc)
+#                ant_dist.append((dist, ant_loc, food_loc))
+#        ant_dist.sort()
+#        for dist, ant_loc, food_loc in ant_dist:
+#            if food_loc not in food_targets and ant_loc in free_ants:
+#                if do_move_location(ant_loc, food_loc):
+#                    food_targets.add(food_loc)
+        
+        for ant_loc in free_ants:
+            path = self.path_finder.BFS(ant_loc, set(ants.food())-food_targets, self.possible_moves)
+            if len(path) >0:
+                if do_move_location(ant_loc, path[0][1][ant_loc]):
+                    food_targets.add(path[0][2])
+ 
+ 
                 
         
         # check if we still have time left to calculate more orders
