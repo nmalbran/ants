@@ -3,6 +3,8 @@ from ants import *
 from PathFinder import PathFinder
 from random import shuffle
 
+ROSE = ('n','e','s','w')
+
 # define a class with a do_turn method
 # the Ants.run method will parse and update bot input
 # it will also run the do_turn method for us
@@ -22,6 +24,8 @@ class MyBot:
         self.unseen = []
         # water spaces
         self.water = set()
+        # spaces where ants will go
+        self.prox_dest = set()
     
     # do_setup is run once at the start of the game
     # after the bot has received the game settings
@@ -40,7 +44,7 @@ class MyBot:
                 self.unseen.append((row, col))
     
     def possible_moves(self, loc):
-        directions = ('n','e','s','w')
+        directions = ROSE
         moves = []
         for direction in directions:
             moves.append(self.ants.destination(loc, direction))
@@ -48,6 +52,24 @@ class MyBot:
             if loc in self.water:
                 moves.remove(loc)
         return moves
+    
+    def do_move_direction(self, loc, direction, free_ants):
+        new_loc = self.ants.destination(loc, direction)
+        if(self.ants.unoccupied(new_loc) and new_loc not in self.prox_dest):
+            self.ants.issue_order((loc, direction))
+            self.prox_dest.add(new_loc)
+            free_ants.remove(loc)
+            return True
+        else:
+            return False
+    
+    def do_move_location(self, loc, dest, free_ants):
+        directions = self.ants.direction(loc, dest)
+        shuffle(directions)
+        for direction in directions:
+            if self.do_move_direction(loc, direction, free_ants):
+                return True
+        return False
     
     # do turn is run once per turn
     # the ants class has the game state and is updated by the Ants.run method
@@ -67,25 +89,7 @@ class MyBot:
                 self.unseen.remove(water)        
         
         # track all moves, prevent collisions and prevent stepping on own hill
-        prox_dest = set(ants.my_hills())
-        
-        def do_move_direction(loc, direction):
-            new_loc = ants.destination(loc, direction)
-            if(ants.unoccupied(new_loc) and new_loc not in prox_dest):
-                ants.issue_order((loc, direction))
-                prox_dest.add(new_loc)
-                free_ants.remove(loc)
-                return True
-            else:
-                return False
-        
-        def do_move_location(loc, dest):
-            directions = ants.direction(loc, dest)
-            shuffle(directions)
-            for direction in directions:
-                if do_move_direction(loc, direction):
-                    return True
-            return False
+        self.prox_dest = set(ants.my_hills())
         
         new_orders = {}
         # work in orders
@@ -95,7 +99,7 @@ class MyBot:
                 # if food still exist, go for it
                 if self.orders[ant_loc][0] in ants.food():
                     new_loc = self.orders[ant_loc][1][ant_loc]
-                    if do_move_location(ant_loc, new_loc):
+                    if self.do_move_location(ant_loc, new_loc, free_ants):
                         new_orders[new_loc] = self.orders[ant_loc]
                     else:
                         new_orders[ant_loc] = self.orders[ant_loc]
@@ -106,9 +110,9 @@ class MyBot:
         
         # find close food
         for ant_loc in free_ants:
-            path = self.path_finder.BFS(ant_loc, set(ants.food())-self.food_targets, self.possible_moves)
+            path = self.path_finder.BFSr(ant_loc, set(ants.food())-self.food_targets, self.possible_moves)
             if len(path) > 0:
-                if do_move_location(ant_loc, path[0][1][ant_loc]):
+                if self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
                     self.food_targets.add(path[0][2])
                     self.orders[path[0][1][ant_loc]] = (path[0][2],path[0][1])
                     self.working_ants.append(path[0][1][ant_loc])
@@ -120,8 +124,8 @@ class MyBot:
         # unblock own hill
         for hill_loc in ants.my_hills():
             if hill_loc in free_ants:
-                for direction in ('n','e','s','w'):
-                    if do_move_direction(hill_loc, direction):
+                for direction in ROSE:
+                    if self.do_move_direction(hill_loc, direction, free_ants):
                         break
         
         # check if we still have time left to calculate more orders
@@ -139,7 +143,7 @@ class MyBot:
                 ant_dist.append((dist, ant_loc))
         ant_dist.sort()
         for dist, ant_loc in ant_dist:
-            do_move_location(ant_loc, hill_loc)
+            self.do_move_location(ant_loc, hill_loc, free_ants)
 
         # check if we still have time left to calculate more orders
 #        if ants.time_remaining() < 10:
@@ -156,7 +160,7 @@ class MyBot:
                 unseen_dist.append((dist, unseen_loc))
             unseen_dist.sort()
             for dist, unseen_loc in unseen_dist:
-                if do_move_location(ant_loc, unseen_loc):
+                if self.do_move_location(ant_loc, unseen_loc, free_ants):
                     break
             
 if __name__ == '__main__':
