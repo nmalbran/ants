@@ -1,4 +1,5 @@
 from collections import deque
+import heapq
 
 class PathFinder():
 
@@ -55,11 +56,26 @@ class PathFinder():
         return paths
 
 
-#    def A-Star(self, source, dest):
-#        openlist = []
+#    def AStar(self, source, dest, childs):
+#        #openlist = PriorityQueueSet([(0, source)])
+#        openlist = [(0, source)]
 #        closelist = []
-        
-        
+#        
+#        while True:
+#            openlist.sort()
+#            n = openlist[0]
+#            if n[1] == dest:
+#                break
+#            closelist.append(n[1])
+#            children = childs(n[1])
+#            for child in children:
+#                cost = g(n[1]) + 1
+#                if child in openlist and cost < g(child):
+#                    openlist.remove(child)
+#                if child in closelist and cost < g(child):
+#                    closelist.remove(child)
+#                if child not in openlist and child not in closelist:
+                    
         
         
 
@@ -68,3 +84,53 @@ class Node():
         self.loc = loc
         self.father = father
         self.cost = cost
+        
+
+class PriorityQueueSet(object):
+    """ Combined priority queue and set data structure. Acts like
+        a priority queue, except that its items are guaranteed to
+        be unique.
+
+        Provides O(1) membership test, O(log N) insertion and 
+        O(log N) removal of the smallest item.
+
+        Important: the items of this data structure must be both
+        comparable and hashable (i.e. must implement __cmp__ and
+        __hash__). This is true of Python's built-in objects, but
+        you should implement those methods if you want to use
+        the data structure for custom objects.
+    """
+    def __init__(self, items=[]):
+        """ Create a new PriorityQueueSet.
+
+            items:
+                An initial item list - it can be unsorted and 
+                non-unique. The data structure will be created in
+                O(N).
+        """
+        self.set = dict((item, True) for item in items)
+        self.heap = self.set.keys()
+        heapq.heapify(self.heap)
+
+    def has_item(self, item):
+        """ Check if *item* exists in the queue
+        """
+        return item in self.set
+
+    def pop_smallest(self):
+        """ Remove and return the smallest item from the queue
+        """
+        smallest = heapq.heappop(self.heap)
+        del self.set[smallest]
+        return smallest
+
+    def add(self, item):
+        """ Add *item* to the queue. The item will be added only
+            if it doesn't already exist in the queue.
+        """
+        if not (item in self.set):
+            self.set[item] = True
+            heapq.heappush(self.heap, item)
+    
+    def empty(self):
+        return len(self.set) == 0

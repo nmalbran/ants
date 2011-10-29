@@ -134,7 +134,7 @@ class Ants():
                             self.hill_list[(row, col)] = owner
                         
     def time_remaining(self):
-        return self.turntime - int(1000 * (time.clock() - self.turn_start_time))
+        return self.turntime - int(1000 * (time.clock() - self.turn_start_time)) -5
     
     def issue_order(self, order):
         'issue an order by writing the proper ant location and direction'

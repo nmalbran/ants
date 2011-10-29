@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 from ants import *
 from PathFinder import PathFinder
-from random import shuffle
+#from random import shuffle
+import time
 
 ROSE = ('n','e','s','w')
 
@@ -27,25 +28,33 @@ class MyBot:
         # spaces where ants will go
         self.prox_dest = set()
         
-        # keep track of pair turns
-        self.pair = True
+        # stats for timeout prevent
+        self.times = {'bfs':2, 'unseen':5, 'enemy_hill':0}
+        self.fifth = -1
+        
+        self.rows = 0
+        self.cols = 0
+        self.turns = 0
+        self.va = []
     
     # do_setup is run once at the start of the game
     # after the bot has received the game settings
     # the ants class is created and setup by the Ants.run method
     def do_setup(self, ants):
-#        self.loadtime = ants.loadtime
+        #self.loadtime = ants.loadtime
+        #self.turntime = ants.turntime
         self.rows = ants.rows
         self.cols = ants.cols
         self.turns = ants.turns
-        self.vr = ants.viewradius2
-        self.fr = ants.spawnradius2
-        #self.ps = ants.player_seed
+        #self.vr = ants.viewradius2
+        #self.fr = ants.spawnradius2
         
         # visible area for an ant
         ants.visible((1,1))
+        va = []
         if hasattr(ants, 'vision_offsets_2'):
-            self.va = ants.vision_offsets_2
+            va = ants.vision_offsets_2
+        self.va = va
         
         rows = range(ants.rows)
         cols = range(ants.cols)
@@ -80,7 +89,9 @@ class MyBot:
     def do_turn(self, ants):
         self.ants = ants
         d = ants.distance
-        self.pair = not self.pair
+        self.fifth = (self.fifth +1)%5
+        
+        t = ants.time_remaining
         
         # ants that have'nt moved yet
         free_ants = ants.my_ants()[:]
@@ -111,18 +122,24 @@ class MyBot:
         self.orders = new_orders
         self.working_ants = self.orders.keys()
         
+
+        # estimate timing start
+        if self.fifth == 0:
+            ini = time.time()
+
+        if t()-self.times['bfs'] > 20:
+            # find close food, ~1ms/ant
+            for ant_loc in free_ants:
+                path = self.path_finder.BFS(ant_loc, set(ants.food())-self.food_targets, self.possible_moves)
+                if len(path) > 0:
+                    if self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
+                        self.food_targets.add(path[0][2])
+                        self.orders[path[0][1][ant_loc]] = (path[0][2],path[0][1])
+                        self.working_ants.append(path[0][1][ant_loc])
         
-        # find close food
-        for ant_loc in free_ants:
-            path = self.path_finder.BFS(ant_loc, set(ants.food())-self.food_targets, self.possible_moves)
-            if len(path) > 0:
-                if self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
-                    self.food_targets.add(path[0][2])
-                    self.orders[path[0][1][ant_loc]] = (path[0][2],path[0][1])
-                    self.working_ants.append(path[0][1][ant_loc])
-            # check if we still have time left to calculate more orders
-            if ants.time_remaining() < 10:
-                return
+        # estimate timing stop
+        if self.fifth == 0:
+            self.times['bfs'] = int(1000*(time.time()-ini))+2
 
         # unblock own hill
         for hill_loc in ants.my_hills():
@@ -130,42 +147,74 @@ class MyBot:
                 for direction in ROSE:
                     if self.do_move_direction(hill_loc, direction, free_ants):
                         break
-        
+
         # check if we still have time left to calculate more orders
-        if ants.time_remaining() < 10:
+        if t() < 10:
             return
 
-        if self.pair:
-            # attack hills
-            for hill_loc, hill_owner in ants.enemy_hills():
-                if hill_loc not in self.hills:
-                    self.hills.append(hill_loc)        
+        # attack hills
+        for hill_loc, hill_owner in ants.enemy_hills():
+            if hill_loc not in self.hills:
+                self.hills.append(hill_loc)
+        
+        # check if we still have time left to calculate more orders
+        if t() < 10:
+            return
+        
+        # check for razed hills
 
+        # estimate timing start
+        if self.fifth == 1:
+            ini = time.time()
+
+        if t()-self.times['enemy_hill'] > 30:
+            # calculate distance from every free ant to the enemy hill
             ant_dist = [ (d(ant_loc, hill_loc), ant_loc) for hill_loc in self.hills for ant_loc in free_ants ]
+        
+        # estimate timing stop
+        if self.fifth == 1:
+            self.times['enemy_hill'] = int(1000*(time.time()-ini))
+            #print("enemy-hill: "+str(self.times['enemy_hill']))
+
+        ant_dist.sort()
+        # check if we still have time left to calculate more orders
+        if t() < 10:
+            return
+
+        for dist, ant_loc in ant_dist:
+            self.do_move_location(ant_loc, hill_loc, free_ants)
             # check if we still have time left to calculate more orders
-            if ants.time_remaining() < 10:
+            if t() < 10:
                 return
 
-            ant_dist.sort()
-            for dist, ant_loc in ant_dist:
-                self.do_move_location(ant_loc, hill_loc, free_ants)
-                # check if we still have time left to calculate more orders
-                if ants.time_remaining() < 10:
-                    return
-        else:
-            # explore unseen areas
-            v = ants.visible
-            unseen = [ loc for loc in self.unseen if not v(loc) ]
-            self.unseen = unseen
-                    
-            for ant_loc in free_ants:
-                unseen_dist = [ (d(ant_loc, unseen_loc), unseen_loc) for unseen_loc in self.unseen ]
-                unseen_dist.sort()
-                for dist, unseen_loc in unseen_dist:
-                    if self.do_move_location(ant_loc, unseen_loc, free_ants):
-                        break
-                    if ants.time_remaining() < 10:
-                        return
+        # update unseen spaces, ~5-7ms
+        v = ants.visible
+        unseen = [ loc for loc in self.unseen if not v(loc) ]
+        self.unseen = unseen
+        
+        # check if we still have time left to calculate more orders
+        if t() < 20:
+            return
+
+        # estimate timing start
+        if self.fifth == 4:
+            num = len(free_ants)+1
+            ini = time.time()
+        
+        # explore unseen areas
+        for ant_loc in free_ants:
+            if t()-self.times['unseen'] < 20:
+                break
+            unseen_dist = [ (d(ant_loc, unseen_loc), unseen_loc) for unseen_loc in self.unseen ]
+            unseen_dist.sort()
+            for dist, unseen_loc in unseen_dist:
+                if self.do_move_location(ant_loc, unseen_loc, free_ants):
+                    break
+
+        # estimate timing stop
+        if self.fifth == 4:
+            self.times['unseen'] = int(1000*(time.time()-ini))/num +4
+            #print("unseen: "+str(self.times['unseen']))
             
 if __name__ == '__main__':
     # psyco will speed up python a little, but is not needed
