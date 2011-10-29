@@ -55,6 +55,14 @@ class PathFinder():
         return paths
 
 
+#    def A-Star(self, source, dest):
+#        openlist = []
+#        closelist = []
+        
+        
+        
+        
+
 class Node():
     def __init__(self, loc, father, cost):
         self.loc = loc

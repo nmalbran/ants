@@ -26,6 +26,9 @@ class MyBot:
         self.water = set()
         # spaces where ants will go
         self.prox_dest = set()
+        
+        # keep track of pair turns
+        self.pair = True
     
     # do_setup is run once at the start of the game
     # after the bot has received the game settings
@@ -38,6 +41,11 @@ class MyBot:
         self.vr = ants.viewradius2
         self.fr = ants.spawnradius2
         #self.ps = ants.player_seed
+        
+        # visible area for an ant
+        ants.visible((1,1))
+        if hasattr(ants, 'vision_offsets_2'):
+            self.va = ants.vision_offsets_2
         
         rows = range(ants.rows)
         cols = range(ants.cols)
@@ -71,7 +79,9 @@ class MyBot:
     # it also has several helper methods to use
     def do_turn(self, ants):
         self.ants = ants
-
+        d = ants.distance
+        self.pair = not self.pair
+        
         # ants that have'nt moved yet
         free_ants = ants.my_ants()[:]
         
@@ -125,39 +135,37 @@ class MyBot:
         if ants.time_remaining() < 10:
             return
 
-        # attack hills
-        for hill_loc, hill_owner in ants.enemy_hills():
-            if hill_loc not in self.hills:
-                self.hills.append(hill_loc)        
-        ant_dist = []
-        for hill_loc in self.hills:
-            for ant_loc in free_ants:
-                dist = ants.distance(ant_loc, hill_loc)
-                ant_dist.append((dist, ant_loc))
-        ant_dist.sort()
-        for dist, ant_loc in ant_dist:
-            self.do_move_location(ant_loc, hill_loc, free_ants)
+        if self.pair:
+            # attack hills
+            for hill_loc, hill_owner in ants.enemy_hills():
+                if hill_loc not in self.hills:
+                    self.hills.append(hill_loc)        
 
-        # check if we still have time left to calculate more orders
-        if ants.time_remaining() < 10:
-            return
-
-        # explore unseen areas
-        for loc in self.unseen[:]:
-            if ants.visible(loc):
-                self.unseen.remove(loc)
-                
-        for ant_loc in free_ants:
-            unseen_dist = []
-            for unseen_loc in self.unseen:
-                dist = ants.distance(ant_loc, unseen_loc)
-                unseen_dist.append((dist, unseen_loc))
-            unseen_dist.sort()
-            for dist, unseen_loc in unseen_dist:
-                if self.do_move_location(ant_loc, unseen_loc, free_ants):
-                    break
+            ant_dist = [ (d(ant_loc, hill_loc), ant_loc) for hill_loc in self.hills for ant_loc in free_ants ]
+            # check if we still have time left to calculate more orders
             if ants.time_remaining() < 10:
                 return
+
+            ant_dist.sort()
+            for dist, ant_loc in ant_dist:
+                self.do_move_location(ant_loc, hill_loc, free_ants)
+                # check if we still have time left to calculate more orders
+                if ants.time_remaining() < 10:
+                    return
+        else:
+            # explore unseen areas
+            v = ants.visible
+            unseen = [ loc for loc in self.unseen if not v(loc) ]
+            self.unseen = unseen
+                    
+            for ant_loc in free_ants:
+                unseen_dist = [ (d(ant_loc, unseen_loc), unseen_loc) for unseen_loc in self.unseen ]
+                unseen_dist.sort()
+                for dist, unseen_loc in unseen_dist:
+                    if self.do_move_location(ant_loc, unseen_loc, free_ants):
+                        break
+                    if ants.time_remaining() < 10:
+                        return
             
 if __name__ == '__main__':
     # psyco will speed up python a little, but is not needed
