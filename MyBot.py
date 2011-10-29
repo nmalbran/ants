@@ -45,7 +45,7 @@ class MyBot:
     # it also has several helper methods to use
     def do_turn(self, ants):
         self.ants = ants
-    
+
         # ants that have'nt moved yet
         free_ants = ants.my_ants()[:]
         
