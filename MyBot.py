@@ -152,7 +152,7 @@ class MyBot:
         if t() < 10:
             return
 
-        # attack hills
+        # detect enemy hills
         for hill_loc, hill_owner in ants.enemy_hills():
             if hill_loc not in self.hills:
                 self.hills.append(hill_loc)
@@ -162,6 +162,13 @@ class MyBot:
             return
         
         # check for razed hills
+        for enemy_hill in self.hills[:]:
+            if enemy_hill in ants.my_ants():
+                self.hills.remove(enemy_hill)
+
+        # check if we still have time left to calculate more orders
+        if t() < 10:
+            return
 
         # estimate timing start
         if self.fifth == 1:
@@ -181,6 +188,7 @@ class MyBot:
         if t() < 10:
             return
 
+        # attack hills
         for dist, ant_loc in ant_dist:
             self.do_move_location(ant_loc, hill_loc, free_ants)
         
