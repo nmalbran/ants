@@ -55,6 +55,46 @@ class PathFinder():
             paths.sort()
         return paths
 
+    def BFSexplore(self, source, childs, max_cost=7, num=1):
+        tree = Node(source, None, 0)
+        visited = set()
+        cost = 0
+        founds = []
+        
+        q = deque()
+        q.append(tree)
+        visited.add(source)
+
+        while(len(q)>0):
+            v = q.popleft()
+            if v.cost == max_cost:
+                founds.append(v)
+                if len(founds)>=num:
+                    break
+            elif v.cost > max_cost:
+                visited.add(v.loc)
+            else:
+                children = childs(v.loc)
+                for child in children:
+                    if child not in visited:
+                        visited.add(child)
+                        nc = v.cost+1
+                        q.append(Node(child, v, nc))
+                        if cost < nc:
+                            cost = nc
+        
+        paths = []
+        for f in founds:
+            path = {}
+            i = f
+            while i.cost != 0:
+                path[i.father.loc] = i.loc
+                i = i.father
+            paths.append((f.cost, path, f.loc))
+
+        if num > 1:
+            paths.sort()
+        return paths
 
 #    def AStar(self, source, dest, childs):
 #        #openlist = PriorityQueueSet([(0, source)])
