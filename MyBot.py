@@ -29,7 +29,7 @@ class MyBot:
         self.prox_dest = set()
         
         # stats for timeout prevent
-        self.times = {'bfs':2, 'unseen':5, 'enemy_hill':0}
+        self.times = {'bfs':2, 'unseen':5, 'enemy_hill':5}
         self.fifth = -1
         
         self.rows = 0
@@ -173,7 +173,7 @@ class MyBot:
         
         # estimate timing stop
         if self.fifth == 1:
-            self.times['enemy_hill'] = int(1000*(time.time()-ini))
+            self.times['enemy_hill'] = int(1000*(time.time()-ini))+3
             #print("enemy-hill: "+str(self.times['enemy_hill']))
 
         ant_dist.sort()
@@ -183,9 +183,10 @@ class MyBot:
 
         for dist, ant_loc in ant_dist:
             self.do_move_location(ant_loc, hill_loc, free_ants)
-            # check if we still have time left to calculate more orders
-            if t() < 10:
-                return
+        
+        # check if we still have time left to calculate more orders
+        if t() < 10:
+            return
 
         # update unseen spaces, ~5-7ms
         v = ants.visible
