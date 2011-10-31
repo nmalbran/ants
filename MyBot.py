@@ -36,10 +36,11 @@ class MyBot:
         self.turns = 0
         self.va = []
         self.neighbourhood = {}
+        self.protect = {}
         self.first = True
         
         self.rose = ['n','e','s','w']
-        self.turn = 0
+        #self.turn = 0
     
     # do_setup is run once at the start of the game
     # after the bot has received the game settings
@@ -92,18 +93,25 @@ class MyBot:
     # it also has several helper methods to use
     def do_turn(self, ants):
         self.ants = ants
-        d = ants.distance
         self.fifth = (self.fifth +1)%5
+        #self.turn+=1
         
+        d = ants.distance
         t = ants.time_remaining
-        shuffle(self.rose)
-        self.turn+=1
+        
+        # track all moves, prevent collisions and prevent stepping on own hill
+        self.prox_dest = set(ants.my_hills())
+        # update new water space found
+        self.water.update(set(ants.water_list))
+        
+        #shuffle(self.rose)
         
         # define or update neighbourhood
         if self.first:
             for hill in ants.my_hills():
                 h_row, h_col = hill
                 self.neighbourhood[hill] = set([ (h_row+v_row, h_col+v_col) for v_row, v_col in self.va])
+                self.protect[hill] = set([(h_row+1,h_col+1), (h_row-1,h_col-1), (h_row-1,h_col+1), (h_row+1,h_col-1)])
         else:
             old_neighbourhood = self.neighbourhood
             self.neighbourhood = {}
@@ -114,15 +122,23 @@ class MyBot:
         # ants that have'nt moved yet
         free_ants = ants.my_ants()[:]
         
-        # update new water space found
-        self.water.update(set(ants.water_list))
-        
         # remove water from unseen spaces
         #self.unseen.difference_update(set(ants.water_list))
         #self.unseen = [ i for i in self.unseen if i not in set(ants.water_list)]
 
-        # track all moves, prevent collisions and prevent stepping on own hill
-        self.prox_dest = set(ants.my_hills())
+        
+        # find ant attack enemy ants near my hills
+        enemys = set(ants.enemy_ants())
+        for hill in ants.my_hills():
+            enemys_near_hill = enemys & self.neighbourhood[hill]
+            if len(enemys_near_hill) > 0:
+                print("enemy close")
+                for enemy_ant in enemys_near_hill:
+                    paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves, False, 10, True)
+                    if len(paths) > 0:
+                        print("num atk: "+len(paths))
+                        for path in paths:
+                            self.do_move_location(path[2], path[1][path[2]])
         
         new_orders = {}
         # work in food_orders (food_loc, path)
@@ -166,17 +182,17 @@ class MyBot:
                     if self.do_move_direction(hill_loc, direction, free_ants):
                         break
 
-        # defend hills, mantain 8 ants close to hill
+        # defend hills, mantain 3 ants close to hill
         for hill in ants.my_hills():
-            if self.turn > 10 and ants.my_ants() > 15:
+            if ants.my_ants() > 8:
                 ants_in_hills = self.neighbourhood[hill] & set(free_ants)
-                if len(ants_in_hills) <= 8:
+                if len(ants_in_hills) <= 3:
                     for ant_loc in ants_in_hills:
                         free_ants.remove(ant_loc)
                 else:
                     i = 0
                     for ant_loc in ants_in_hills:
-                        if i>8:
+                        if i>3:
                             break
                         free_ants.remove(ant_loc)
                         i+=1
@@ -257,14 +273,17 @@ class MyBot:
         for ant_loc in free_ants[:]:
             if t()-self.times['unseen'] < 20:
                 break
-            path = self.path_finder.BFSexplore(ant_loc, self.possible_moves)
+            shuffle(self.rose)
+            path = self.path_finder.BFSexplore(ant_loc, self.possible_moves, 10)
             if len(path) > 0 and self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
                 self.explore_orders[path[0][1][ant_loc]] = (path[0][2], path[0][1])
 
         # estimate timing stop
         if self.fifth == 4:
-            self.times['unseen'] = int(1000*(time.time()-ini))/num +1
+            self.times['unseen'] = int(1000*(time.time()-ini))/num +2
             #print("unseen: "+str(self.times['unseen']))
+        
+        print("time left: "+str(t()))
             
 if __name__ == '__main__':
     # psyco will speed up python a little, but is not needed
