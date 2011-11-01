@@ -53,7 +53,7 @@ class PathFinder():
 
         if not first:
             paths.sort()
-        return paths
+        return paths # (cost, path, location)
 
     def BFSexplore(self, source, childs, max_cost=7, num=1):
         tree = Node(source, None, 0)
@@ -101,7 +101,7 @@ class PathFinder():
 #        openlist = [(0, source)]
 #        closelist = []
 #        
-#        while True:
+#        while 1:
 #            openlist.sort()
 #            n = openlist[0]
 #            if n[1] == dest:

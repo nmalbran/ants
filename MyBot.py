@@ -31,11 +31,14 @@ class MyBot:
         self.times = {'bfs':2, 'unseen':5, 'enemy_hill':5}
         self.fifth = -1
         
-        self.rows = 0
-        self.cols = 0
-        self.turns = 0
+        #self.rows = 0
+        #self.cols = 0
+        #self.turns = 0
+        # view area 
         self.va = []
+        # spaces around hills
         self.neighbourhood = {}
+        # spaces with permanent ants, around hills
         self.protect = {}
         self.first = True
         
@@ -48,18 +51,15 @@ class MyBot:
     def do_setup(self, ants):
         #self.loadtime = ants.loadtime
         #self.turntime = ants.turntime
-        self.rows = ants.rows
-        self.cols = ants.cols
-        self.turns = ants.turns
+        #self.rows = ants.rows
+        #self.cols = ants.cols
+        #self.turns = ants.turns
         #self.vr = ants.viewradius2
         #self.fr = ants.spawnradius2
         
         # visible area for an ant
         ants.visible((1,1))
-        va = []
-        if hasattr(ants, 'vision_offsets_2'):
-            va = ants.vision_offsets_2
-        self.va = va
+        self.va = ants.vision_offsets_2
         
         #rows = range(ants.rows)
         #cols = range(ants.cols)
@@ -67,7 +67,9 @@ class MyBot:
     
     def possible_moves(self, loc):
         d = self.ants.destination
-        moves = [ loc for loc in [ d(loc, direction) for direction in self.rose ] if loc not in self.water ]
+        water = self.water
+        rose = self.rose
+        moves = [ loc for loc in [ d(loc, direction) for direction in rose ] if loc not in water ]
         return moves
     
     def do_move_direction(self, loc, direction, free_ants):
@@ -102,7 +104,7 @@ class MyBot:
         # track all moves, prevent collisions and prevent stepping on own hill
         self.prox_dest = set(ants.my_hills())
         # update new water space found
-        self.water.update(set(ants.water_list))
+        self.water.update(ants.water())
         
         #shuffle(self.rose)
         
@@ -111,34 +113,48 @@ class MyBot:
             for hill in ants.my_hills():
                 h_row, h_col = hill
                 self.neighbourhood[hill] = set([ (h_row+v_row, h_col+v_col) for v_row, v_col in self.va])
-                self.protect[hill] = set([(h_row+1,h_col+1), (h_row-1,h_col-1), (h_row-1,h_col+1), (h_row+1,h_col-1)])
+                self.protect[hill] = set([(h_row+1,h_col+1), (h_row-1,h_col-1), (h_row-1,h_col+1), (h_row+1,h_col-1)]) - self.water
         else:
             old_neighbourhood = self.neighbourhood
+            old_protect = self.protect
             self.neighbourhood = {}
+            self.protect = {}
             for hill in ants.my_hills():
                 if hill in old_neighbourhood:
                     self.neighbourhood[hill] = old_neighbourhood[hill]
+                    self.protect[hill] = old_protect[hill]
         
         # ants that have'nt moved yet
         free_ants = ants.my_ants()[:]
         
         # remove water from unseen spaces
-        #self.unseen.difference_update(set(ants.water_list))
-        #self.unseen = [ i for i in self.unseen if i not in set(ants.water_list)]
+        #self.unseen.difference_update(ants.water())
+        #self.unseen = [ i for i in self.unseen if i not in set(ants.water())]
 
         
         # find ant attack enemy ants near my hills
-        enemys = set(ants.enemy_ants())
         for hill in ants.my_hills():
-            enemys_near_hill = enemys & self.neighbourhood[hill]
+            enemys_near_hill = set([ loc for loc, owner in ants.enemy_ants() ]) & self.neighbourhood[hill]
             if len(enemys_near_hill) > 0:
                 print("enemy close")
                 for enemy_ant in enemys_near_hill:
                     paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves, False, 10, True)
                     if len(paths) > 0:
-                        print("num atk: "+len(paths))
+                        print("num atk: "+int(len(paths)))
                         for path in paths:
-                            self.do_move_location(path[2], path[1][path[2]])
+                            self.do_move_location(path[2], path[1][path[2]], free_ants)
+        
+        # protect hills, maintain 4 ants around each hill
+        if len(ants.my_ants())/len(ants.my_hills()) > 8:
+            for hill in ants.my_hills():
+                for defend_loc in self.protect[hill]:
+                    if defend_loc in free_ants: # if there is an ant, stay there
+                        free_ants.remove(defend_loc)
+                        self.prox_dest.add(defend_loc)
+                    else:
+                        closest = self.path_finder.BFS(defend_loc, free_ants, self.possible_moves, True, 10, True)
+                        if len(closest) > 0:
+                            self.do_move_location(closest[0][2], closest[0][1][closest[0][2]], free_ants)
         
         new_orders = {}
         # work in food_orders (food_loc, path)
@@ -182,20 +198,20 @@ class MyBot:
                     if self.do_move_direction(hill_loc, direction, free_ants):
                         break
 
-        # defend hills, mantain 3 ants close to hill
-        for hill in ants.my_hills():
-            if ants.my_ants() > 8:
-                ants_in_hills = self.neighbourhood[hill] & set(free_ants)
-                if len(ants_in_hills) <= 3:
-                    for ant_loc in ants_in_hills:
-                        free_ants.remove(ant_loc)
-                else:
-                    i = 0
-                    for ant_loc in ants_in_hills:
-                        if i>3:
-                            break
-                        free_ants.remove(ant_loc)
-                        i+=1
+        # defend hills, maintain 3 ants close to hill
+        #for hill in ants.my_hills():
+        #    if ants.my_ants() > 8:
+        #        ants_in_hills = self.neighbourhood[hill].intersection(free_ants)
+        #        if len(ants_in_hills) <= 3:
+        #            for ant_loc in ants_in_hills:
+        #                free_ants.remove(ant_loc)
+        #        else:
+        #            i = 0
+        #            for ant_loc in ants_in_hills:
+        #                if i>3:
+        #                    break
+        #                free_ants.remove(ant_loc)
+        #                i+=1
 
         # check if we still have time left to calculate more orders
         if t() < 10:

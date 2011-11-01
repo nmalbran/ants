@@ -169,6 +169,10 @@ class Ants():
     def food(self):
         'return a list of all food locations'
         return self.food_list[:]
+        
+    def water(self):
+        'return a list of all water locations'
+        return self.water_list[:]
 
     def passable(self, loc):
         'true if not water'
@@ -186,6 +190,7 @@ class Ants():
         d_row, d_col = AIM[direction]
         return ((row + d_row) % self.rows, (col + d_col) % self.cols)        
 
+        # Manhatten distance
     def distance(self, loc1, loc2):
         'calculate the closest distance between to locations'
         row1, col1 = loc1
