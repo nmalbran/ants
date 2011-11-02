@@ -100,14 +100,17 @@ class PathFinder():
 #        #openlist = PriorityQueueSet([(0, source)])
 #        openlist = [(0, source)]
 #        closelist = []
-#        
+        
 #        while 1:
 #            openlist.sort()
 #            n = openlist[0]
 #            if n[1] == dest:
 #                break
+
+#            openlist.remove(n)
 #            closelist.append(n[1])
 #            children = childs(n[1])
+            
 #            for child in children:
 #                cost = g(n[1]) + 1
 #                if child in openlist and cost < g(child):

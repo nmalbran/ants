@@ -2,6 +2,7 @@
 from ants import *
 from PathFinder import PathFinder
 from random import shuffle
+from math import sqrt
 import time
 
 # define a class with a do_turn method
@@ -14,8 +15,10 @@ class MyBot:
         # orders already asigned
         self.food_orders = {}
         self.explore_orders = {}
-        # ants working in food orders
-        self.working_ants = []
+        self.attaking_orders = {}
+        # ants working
+        self.food_gathering_ants = []
+        #self.attaking_ants = []
         # food spaces being hunted
         self.food_targets = set()
         # enemy's hills
@@ -53,19 +56,33 @@ class MyBot:
     def do_setup(self, ants):
         #self.loadtime = ants.loadtime
         #self.turntime = ants.turntime
-        #self.rows = ants.rows
-        #self.cols = ants.cols
+        self.rows = ants.rows
+        self.cols = ants.cols
         #self.turns = ants.turns
         #self.vr = ants.viewradius2
         #self.fr = ants.spawnradius2
-        
+        extra_rad = 2
+        ar2 = int(4*ants.attackradius2+(extra_rad**2)+4*extra_rad*sqrt(ants.attackradius2))
+
         # visible area for an ant
         ants.visible((1,1))
         self.va = ants.vision_offsets_2
         
-        #rows = range(ants.rows)
-        #cols = range(ants.cols)
-        #self.unseen = [ (r,c) for r in rows for c in cols ]
+        #self.unseen = [ (r,c) for r in range(ants.rows) for c in range(ants.cols) ]
+        
+        # precalculate squares around an ant to set as visible
+        vision_offsets = []
+        mx = int(sqrt(ar2))
+        for d_row in range(-mx,mx+1):
+            for d_col in range(-mx,mx+1):
+                d = d_row**2 + d_col**2
+                if d <= ar2:
+                    vision_offsets.append((
+                        d_row%self.rows-self.rows,
+                        d_col%self.cols-self.cols
+                    ))
+        self.ar = vision_offsets
+        
     
     # receive set of obstacles
     # return function giving possible moves using these obstacles
@@ -95,6 +112,10 @@ class MyBot:
             if self.do_move_direction(loc, direction, free_ants):
                 return True
         return False
+    
+    def attack_radius(self, loc):
+        a_row, a_col = loc
+        return set([ ((a_row+v_row)%self.rows, (a_col+v_col)%self.cols) for v_row, v_col in self.ar])
     
     # do turn is run once per turn
     # the ants class has the game state and is updated by the Ants.run method
@@ -130,7 +151,7 @@ class MyBot:
         if self.first:
             for hill in ants.my_hills():
                 h_row, h_col = hill
-                self.neighbourhood[hill] = set([ (h_row+v_row, h_col+v_col) for v_row, v_col in self.va])
+                self.neighbourhood[hill] = set([ ((h_row+v_row)%self.rows, (h_col+v_col)%self.cols) for v_row, v_col in self.va])
                 self.protect[hill] = set([(h_row+1,h_col+1), (h_row-1,h_col-1), (h_row-1,h_col+1), (h_row+1,h_col-1)]) - self.water
                 self.exitway[hill] = [(hill, self.rose), ((h_row+1,h_col), ['s']), ((h_row-1,h_col), ['n']),
                                                          ((h_row,h_col+1), ['e']), ((h_row,h_col-1), ['w'])]
@@ -151,13 +172,11 @@ class MyBot:
         
         # find and attack enemy ants near my hills
         for hill in ants.my_hills():
-            enemys_near_hill = set([ loc for loc, owner in ants.enemy_ants() ]) & self.neighbourhood[hill]
+            enemys_near_hill = set(ants.enemy_ants_nn()) & self.neighbourhood[hill]
             if len(enemys_near_hill) > 0:
-                #print("enemy close")
                 for enemy_ant in enemys_near_hill:
                     paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), False, 10, True)
                     if len(paths) > 0:
-                        #print("num atk: "+str(len(paths)))
                         for path in paths:
                             self.do_move_location(path[2], path[1][path[2]], free_ants)
         
@@ -189,11 +208,32 @@ class MyBot:
                     closest = self.path_finder.BFS(defend_loc, free_ants, self.possible_moves(self.water), True, 10, True)
                     if len(closest) > 0:
                         self.do_move_location(closest[0][2], closest[0][1][closest[0][2]], free_ants)
-                
         
-        # work in food_orders (food_loc, path)
+        # prevent fighting
+#        for ant_loc in free_ants[:]:
+#            around_enemys = self.attack_radius(ant_loc).intersection(ants.enemy_ants_nn())
+#            if len(around_enemys) > 0:
+#                around_friends = self.attack_radius(ant_loc).intersection(ants.enemy_ants_nn())
+#                directions = set(self.rose)
+#                for enemy in around_enemys:
+#                    directions.difference_update(ants.direction(ant_loc, enemy))
+#                for direction in directions:
+#                    if self.do_move_direction(ant_loc, direction, free_ants):
+#                        break
+        
+        
+        # continue with attaking_orders
         new_orders = {}
-        for ant_loc in self.working_ants[:]:
+        for ant_loc in free_ants[:]:
+            if ant_loc in self.attaking_orders and self.attaking_orders[ant_loc][0] in self.hills:
+                new_loc = self.attaking_orders[ant_loc][1][ant_loc]
+                self.do_move_location(ant_loc, new_loc, free_ants)
+                new_orders[new_loc] = self.attaking_orders[ant_loc]
+        self.attaking_orders = new_orders
+        
+        # continue with food_orders (food_loc, path)
+        new_orders = {}
+        for ant_loc in self.food_gathering_ants[:]:
             # if ant is still alive and if food still exist, go for it
             if ant_loc in free_ants and self.food_orders[ant_loc][0] in ants.food():
                 new_loc = self.food_orders[ant_loc][1][ant_loc]
@@ -202,7 +242,7 @@ class MyBot:
                 new_orders[new_loc] = self.food_orders[ant_loc]
                 # if food disappear or ant is dead, cancel order
         self.food_orders = new_orders
-        self.working_ants = self.food_orders.keys()
+        self.food_gathering_ants = self.food_orders.keys()
 
         # estimate timing start
         if self.fifth == 0:
@@ -216,16 +256,11 @@ class MyBot:
                     if self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
                         self.food_targets.add(path[0][2])
                         self.food_orders[path[0][1][ant_loc]] = (path[0][2], path[0][1])
-                        self.working_ants.append(path[0][1][ant_loc])
+                        self.food_gathering_ants.append(path[0][1][ant_loc])
         
         # estimate timing stop
         if self.fifth == 0:
             self.times['bfs'] = int(1000*(time.time()-ini))+2
-
-
-
-        # hills and neighbourhood
-        #hills_neighbourhood = set(ants.my_hills()) | set([ l for h in ants.my_hills() for l in self.possible_moves(self.water)(h) ])
 
         # unblock own hill
         for hill in ants.my_hills():
@@ -234,12 +269,6 @@ class MyBot:
                     for direction in directions:
                         if self.do_move_direction(loc, direction, free_ants):
                             break
-                
-        #for hill_loc in hills_neighbourhood:
-        #    if hill_loc in free_ants:
-        #        for direction in self.rose:
-        #            if self.do_move_direction(hill_loc, direction, free_ants):
-        #                break
 
         # check if we still have time left to calculate more orders
         if t() < 10:
@@ -251,7 +280,7 @@ class MyBot:
             
         # calculate distance from every free ant to the enemy hill
         if t()-self.times['enemy_hill'] > 30:
-            ant_dist = [ (d(ant_loc, hill_loc), ant_loc) for hill_loc in self.hills for ant_loc in free_ants ]
+            ant_dist = [ (d(ant_loc, hill_loc), ant_loc, hill_loc) for hill_loc in self.hills for ant_loc in free_ants ]
             ant_dist.sort()
         
         # estimate timing stop
@@ -260,9 +289,14 @@ class MyBot:
             #print("enemy-hill: "+str(self.times['enemy_hill']))
 
         # attack hills
-        for dist, ant_loc in ant_dist:
-            if dist < 50 and ant_loc in free_ants:
-                self.do_move_location(ant_loc, hill_loc, free_ants)
+        for dist, ant_loc, hill_loc in ant_dist:
+            if ant_loc in free_ants:
+                if dist < 30:
+                    path = self.path_finder.BFS(ant_loc, set([hill_loc]), self.possible_moves(self.water), True, 30)
+                    if len(path) > 0 and self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
+                        self.attaking_orders[path[0][1][ant_loc]] = (path[0][2], path[0][1])
+                else:
+                    self.do_move_location(ant_loc, hill_loc, free_ants)
         
         # update unseen spaces, ~5-7ms
         #v = ants.visible
@@ -320,3 +354,23 @@ if __name__ == '__main__':
         Ants.run(MyBot())
     except KeyboardInterrupt:
         print('ctrl-c, leaving ...')
+
+
+# ORDEN DE ACCION:
+
+# actualizar variables
+# atacar enemigos cerca de los hormigueros
+# dejar hormigas cerca
+
+# continuar con las ordenes de ataque
+
+# continuar con las ordenes de comida
+# buscar comida
+
+# despejar hormigueros
+
+# atacar hormigueros
+
+# continuar con las ordenes de exploracion
+# explorar
+

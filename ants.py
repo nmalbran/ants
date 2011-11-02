@@ -161,9 +161,15 @@ class Ants():
                     if owner == MY_ANT]
 
     def enemy_ants(self):
-        'return a list of all visible enemy ants'
+        'return a list of all visible enemy ants ((row, col), owner)'
         return [((row, col), owner)
                     for (row, col), owner in self.ant_list.items()
+                    if owner != MY_ANT]
+
+    def enemy_ants_nn(self):
+        'return a list of all visible enemy ants (row, col)'
+        return [loc
+                    for loc, owner in self.ant_list.items()
                     if owner != MY_ANT]
 
     def food(self):
@@ -226,6 +232,35 @@ class Ants():
                 d.append('e')
             if col1 - col2 <= width2:
                 d.append('w')
+        return d
+        
+    def reverse_direction(self, loc1, loc2):
+        'determine the 1 or 2 slowest (farest) directions to run from a location'
+        row1, col1 = loc1
+        row2, col2 = loc2
+        height2 = self.rows//2
+        width2 = self.cols//2
+        d = []
+        if row1 < row2:
+            if row2 - row1 >= height2:
+                d.append('s')
+            if row2 - row1 <= height2:
+                d.append('n')
+        if row2 < row1:
+            if row1 - row2 >= height2:
+                d.append('n')
+            if row1 - row2 <= height2:
+                d.append('s')
+        if col1 < col2:
+            if col2 - col1 >= width2:
+                d.append('e')
+            if col2 - col1 <= width2:
+                d.append('w')
+        if col2 < col1:
+            if col1 - col2 >= width2:
+                d.append('w')
+            if col1 - col2 <= width2:
+                d.append('e')
         return d
 
     def visible(self, loc):
