@@ -153,11 +153,11 @@ class MyBot:
         for hill in ants.my_hills():
             enemys_near_hill = set([ loc for loc, owner in ants.enemy_ants() ]) & self.neighbourhood[hill]
             if len(enemys_near_hill) > 0:
-                print("enemy close")
+                #print("enemy close")
                 for enemy_ant in enemys_near_hill:
                     paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), False, 10, True)
                     if len(paths) > 0:
-                        print("num atk: "+str(len(paths)))
+                        #print("num atk: "+str(len(paths)))
                         for path in paths:
                             self.do_move_location(path[2], path[1][path[2]], free_ants)
         
@@ -165,17 +165,31 @@ class MyBot:
         if t() < 10:
             return
         
-        # protect hills, maintain 4 ants around each hill
-        if len(ants.my_ants())/(len(ants.my_hills())+1) > 5:
-            for hill in ants.my_hills():
-                for defend_loc in self.protect[hill]:
-                    if defend_loc in free_ants: # if there is an ant, stay there
-                        free_ants.remove(defend_loc)
-                        self.prox_dest.add(defend_loc)
-                    else:
-                        closest = self.path_finder.BFS(defend_loc, free_ants, self.possible_moves(self.water), True, 10, True)
-                        if len(closest) > 0:
-                            self.do_move_location(closest[0][2], closest[0][1][closest[0][2]], free_ants)
+        num = len(ants.my_ants())/(len(ants.my_hills())+1)
+        if num > 6:
+            protecting_ants = 4
+        elif num > 3:
+            protecting_ants = 2
+        elif num > 1:
+            protecting_ants = 1
+        else:
+            protecting_ants = 0
+
+        # protect hills, maintain x ants around each hill
+        for hill in ants.my_hills():
+            i = 0
+            for defend_loc in self.protect[hill]:
+                if i >= protecting_ants:
+                    break
+                i+=1
+                if defend_loc in free_ants: # if there is an ant, stay there
+                    free_ants.remove(defend_loc)
+                    self.prox_dest.add(defend_loc)
+                else:
+                    closest = self.path_finder.BFS(defend_loc, free_ants, self.possible_moves(self.water), True, 10, True)
+                    if len(closest) > 0:
+                        self.do_move_location(closest[0][2], closest[0][1][closest[0][2]], free_ants)
+                
         
         # work in food_orders (food_loc, path)
         new_orders = {}
@@ -247,7 +261,7 @@ class MyBot:
 
         # attack hills
         for dist, ant_loc in ant_dist:
-            if dist < 50:
+            if dist < 50 and ant_loc in free_ants:
                 self.do_move_location(ant_loc, hill_loc, free_ants)
         
         # update unseen spaces, ~5-7ms
@@ -279,7 +293,7 @@ class MyBot:
             if t()-self.times['unseen'] < 20:
                 break
             shuffle(self.rose)
-            path = self.path_finder.BFSexplore(ant_loc, self.possible_moves(self.water.union(self.prox_dest)), 10)
+            path = self.path_finder.BFSexplore(ant_loc, self.possible_moves(self.water.union(self.prox_dest)), 15)
             if len(path) > 0 and self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
                 self.explore_orders[path[0][1][ant_loc]] = (path[0][2], path[0][1])
 
