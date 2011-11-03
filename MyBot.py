@@ -77,7 +77,7 @@ class MyBot:
                         ))
             return offsets
             
-        extra_rad = 2
+        extra_rad = 0
         ar2 = int(4*ants.attackradius2+(extra_rad**2)+4*extra_rad*sqrt(ants.attackradius2))
         extra_rad = 1
         dr2 = int(ants.attackradius2+(extra_rad**2)+2*extra_rad*sqrt(ants.attackradius2))
@@ -227,7 +227,9 @@ class MyBot:
                             if len(path) >0:
                                 self.do_move_location(ant, path[0][1][ant], free_ants)
                 else:
-                    if min([ d(ant_loc, hill) for hill in ants.my_hills() ]) > 30 and ant_loc in free_ants:
+                    dist = [ d(ant_loc, hill) for hill in ants.my_hills() ]
+                    dist.append(100)
+                    if min(dist) > 30 and ant_loc in free_ants:
                         # run
                         directions = set(self.rose).difference(ants.direction(ant_loc, enemy))
                         for direction in directions:
@@ -241,7 +243,9 @@ class MyBot:
             elif len(around_enemys) > 1:
                 friends_around = self.get_radius(ant_loc, self.dr).intersection(free_ants)
                 if len(friends_around) < 1: # if alone, run
-                    if min([ d(ant_loc, hill) for hill in ants.my_hills() ]) > 30 and ant_loc in free_ants:
+                    dist = [ d(ant_loc, hill) for hill in ants.my_hills() ]
+                    dist.append(100)
+                    if min(dist) > 30 and ant_loc in free_ants:
                         directions = set(self.rose)
                         for enemy in around_enemys:
                             directions.difference_update(ants.direction(ant_loc, enemy))
