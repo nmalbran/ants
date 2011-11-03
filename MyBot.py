@@ -61,27 +61,30 @@ class MyBot:
         #self.turns = ants.turns
         #self.vr = ants.viewradius2
         #self.fr = ants.spawnradius2
-        extra_rad = 2
-        ar2 = int(4*ants.attackradius2+(extra_rad**2)+4*extra_rad*sqrt(ants.attackradius2))
-
-        # visible area for an ant
-        ants.visible((1,1))
-        self.va = ants.vision_offsets_2
-        
         #self.unseen = [ (r,c) for r in range(ants.rows) for c in range(ants.cols) ]
         
-        # precalculate squares around an ant to set as visible
-        vision_offsets = []
-        mx = int(sqrt(ar2))
-        for d_row in range(-mx,mx+1):
-            for d_col in range(-mx,mx+1):
-                d = d_row**2 + d_col**2
-                if d <= ar2:
-                    vision_offsets.append((
-                        d_row%self.rows-self.rows,
-                        d_col%self.cols-self.cols
-                    ))
-        self.ar = vision_offsets
+        # precalculate squares around an ant, of radius sqrt(rad2)
+        def get_radius(rad2):
+            offsets = []
+            mx = int(sqrt(rad2))
+            for d_row in range(-mx,mx+1):
+                for d_col in range(-mx,mx+1):
+                    d = d_row**2 + d_col**2
+                    if d <= rad2:
+                        offsets.append((
+                            d_row%self.rows-self.rows,
+                            d_col%self.cols-self.cols
+                        ))
+            return offsets
+            
+        extra_rad = 2
+        ar2 = int(4*ants.attackradius2+(extra_rad**2)+4*extra_rad*sqrt(ants.attackradius2))
+        extra_rad = 1
+        dr2 = int(ants.attackradius2+(extra_rad**2)+2*extra_rad*sqrt(ants.attackradius2))
+
+        self.va = get_radius(ants.viewradius2) # visible area for an ant
+        self.ar = get_radius(ar2)              # attack area => attack rad*2 +2
+        self.dr = get_radius(dr2)              # defend area => attack rad +1
         
     
     # receive set of obstacles
@@ -113,9 +116,9 @@ class MyBot:
                 return True
         return False
     
-    def attack_radius(self, loc):
+    def get_radius(self, loc, area):
         a_row, a_col = loc
-        return set([ ((a_row+v_row)%self.rows, (a_col+v_col)%self.cols) for v_row, v_col in self.ar])
+        return set([ ((a_row+v_row)%self.rows, (a_col+v_col)%self.cols) for v_row, v_col in area])
     
     # do turn is run once per turn
     # the ants class has the game state and is updated by the Ants.run method
@@ -151,7 +154,7 @@ class MyBot:
         if self.first:
             for hill in ants.my_hills():
                 h_row, h_col = hill
-                self.neighbourhood[hill] = set([ ((h_row+v_row)%self.rows, (h_col+v_col)%self.cols) for v_row, v_col in self.va])
+                self.neighbourhood[hill] = set([ ((h_row+v_row)%self.rows, (h_col+v_col)%self.cols) for v_row, v_col in self.ar])
                 self.protect[hill] = set([(h_row+1,h_col+1), (h_row-1,h_col-1), (h_row-1,h_col+1), (h_row+1,h_col-1)]) - self.water
                 self.exitway[hill] = [(hill, self.rose), ((h_row+1,h_col), ['s']), ((h_row-1,h_col), ['n']),
                                                          ((h_row,h_col+1), ['e']), ((h_row,h_col-1), ['w'])]
@@ -175,7 +178,7 @@ class MyBot:
             enemys_near_hill = set(ants.enemy_ants_nn()) & self.neighbourhood[hill]
             if len(enemys_near_hill) > 0:
                 for enemy_ant in enemys_near_hill:
-                    paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), False, 10, True)
+                    paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), 50, 10, True)
                     if len(paths) > 0:
                         for path in paths:
                             self.do_move_location(path[2], path[1][path[2]], free_ants)
@@ -205,21 +208,46 @@ class MyBot:
                     free_ants.remove(defend_loc)
                     self.prox_dest.add(defend_loc)
                 else:
-                    closest = self.path_finder.BFS(defend_loc, free_ants, self.possible_moves(self.water), True, 10, True)
+                    closest = self.path_finder.BFS(defend_loc, free_ants, self.possible_moves(self.water), 1, 10, True)
                     if len(closest) > 0:
                         self.do_move_location(closest[0][2], closest[0][1][closest[0][2]], free_ants)
         
         # prevent fighting
-#        for ant_loc in free_ants[:]:
-#            around_enemys = self.attack_radius(ant_loc).intersection(ants.enemy_ants_nn())
-#            if len(around_enemys) > 0:
-#                around_friends = self.attack_radius(ant_loc).intersection(ants.enemy_ants_nn())
-#                directions = set(self.rose)
-#                for enemy in around_enemys:
-#                    directions.difference_update(ants.direction(ant_loc, enemy))
-#                for direction in directions:
-#                    if self.do_move_direction(ant_loc, direction, free_ants):
-#                        break
+        for ant_loc in free_ants[:]:
+            around_enemys = self.get_radius(ant_loc, self.ar).intersection(ants.enemy_ants_nn())
+            if len(around_enemys) == 1:
+                enemy = around_enemys.pop()
+                friends_around = self.get_radius(ant_loc, self.dr).intersection(free_ants)
+                friends_around.add(ant_loc)
+                
+                if len(friends_around) > 1: # if there is more friends, attack!
+                    for ant in friends_around:
+                        if ant in free_ants:
+                            path = self.path_finder.BFS(ant, [enemy], self.possible_moves(self.water), 1, 6, False)
+                            if len(path) >0:
+                                self.do_move_location(ant, path[0][1][ant], free_ants)
+                else:
+                    if min([ d(ant_loc, hill) for hill in ants.my_hills() ]) > 30 and ant_loc in free_ants:
+                        # run
+                        directions = set(self.rose).difference(ants.direction(ant_loc, enemy))
+                        for direction in directions:
+                            if self.do_move_direction(ant_loc, direction, free_ants):
+                                break
+                        # and call for help
+                        #close_ants = self.path_finder.BFS(ant_loc, set(free_ants)-set([ant_loc]), self.possible_moves(self.water), 3, 10, True)
+                        #for ant_path in close_ants:
+                        #    self.do_move_location(ant_path[2], ant_path[1][ant_path[2]], free_ants)
+                        
+            elif len(around_enemys) > 1:
+                friends_around = self.get_radius(ant_loc, self.dr).intersection(free_ants)
+                if len(friends_around) < 1: # if alone, run
+                    if min([ d(ant_loc, hill) for hill in ants.my_hills() ]) > 30 and ant_loc in free_ants:
+                        directions = set(self.rose)
+                        for enemy in around_enemys:
+                            directions.difference_update(ants.direction(ant_loc, enemy))
+                        for direction in directions:
+                            if self.do_move_direction(ant_loc, direction, free_ants):
+                                break
         
         
         # continue with attaking_orders
@@ -292,7 +320,7 @@ class MyBot:
         for dist, ant_loc, hill_loc in ant_dist:
             if ant_loc in free_ants:
                 if dist < 30:
-                    path = self.path_finder.BFS(ant_loc, set([hill_loc]), self.possible_moves(self.water), True, 30)
+                    path = self.path_finder.BFS(ant_loc, set([hill_loc]), self.possible_moves(self.water), 1, 30)
                     if len(path) > 0 and self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
                         self.attaking_orders[path[0][1][ant_loc]] = (path[0][2], path[0][1])
                 else:

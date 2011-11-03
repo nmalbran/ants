@@ -8,7 +8,7 @@ class PathFinder():
         pass
         
     
-    def BFS(self, source, goals, childs, first=True, max_cost=10, backward=False):
+    def BFS(self, source, goals, childs, num=1, max_cost=10, backward=False):
         """ Find paths from source to goals using BFS,
             with a max lenght path of max_cost,
             if first is set, return the shortest path
@@ -17,6 +17,7 @@ class PathFinder():
         visited = set()
         cost = 0
         founds = []
+        n_founds = 0
         
         q = deque()
         q.append(tree)
@@ -26,7 +27,8 @@ class PathFinder():
             v = q.popleft()
             if v.loc in goals:
                 founds.append(v)
-                if first:
+                n_founds+=1
+                if n_founds >= num:
                     break
 
             children = childs(v.loc)
@@ -51,7 +53,7 @@ class PathFinder():
             else:
                 paths.append((f.cost, path, f.loc))
 
-        if not first:
+        if n_founds > 1:
             paths.sort()
         return paths # (cost, path, location)
 
