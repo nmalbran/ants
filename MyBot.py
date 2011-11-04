@@ -213,45 +213,45 @@ class MyBot:
                         self.do_move_location(closest[0][2], closest[0][1][closest[0][2]], free_ants)
         
         # prevent fighting
-        for ant_loc in free_ants[:]:
-            around_enemys = self.get_radius(ant_loc, self.ar).intersection(ants.enemy_ants_nn())
-            if len(around_enemys) == 1:
-                enemy = around_enemys.pop()
-                friends_around = self.get_radius(ant_loc, self.dr).intersection(free_ants)
-                friends_around.add(ant_loc)
+#        for ant_loc in free_ants[:]:
+#            around_enemys = self.get_radius(ant_loc, self.ar).intersection(ants.enemy_ants_nn())
+#            if len(around_enemys) == 1:
+#                enemy = around_enemys.pop()
+#                friends_around = self.get_radius(ant_loc, self.dr).intersection(free_ants)
+#                friends_around.add(ant_loc)
                 
-                if len(friends_around) > 1: # if there is more friends, attack!
-                    for ant in friends_around:
-                        if ant in free_ants:
-                            path = self.path_finder.BFS(ant, [enemy], self.possible_moves(self.water), 1, 6, False)
-                            if len(path) >0:
-                                self.do_move_location(ant, path[0][1][ant], free_ants)
-                else:
-                    dist = [ d(ant_loc, hill) for hill in ants.my_hills() ]
-                    dist.append(100)
-                    if min(dist) > 30 and ant_loc in free_ants:
-                        # run
-                        directions = set(self.rose).difference(ants.direction(ant_loc, enemy))
-                        for direction in directions:
-                            if self.do_move_direction(ant_loc, direction, free_ants):
-                                break
-                        # and call for help
-                        #close_ants = self.path_finder.BFS(ant_loc, set(free_ants)-set([ant_loc]), self.possible_moves(self.water), 3, 10, True)
-                        #for ant_path in close_ants:
-                        #    self.do_move_location(ant_path[2], ant_path[1][ant_path[2]], free_ants)
+#                if len(friends_around) > 1: # if there is more friends, attack!
+#                    for ant in friends_around:
+#                        if ant in free_ants:
+#                            path = self.path_finder.BFS(ant, [enemy], self.possible_moves(self.water), 1, 6, False)
+#                            if len(path) >0:
+#                                self.do_move_location(ant, path[0][1][ant], free_ants)
+#                else:
+#                    dist = [ d(ant_loc, hill) for hill in ants.my_hills() ]
+#                    dist.append(100)
+#                    if min(dist) > 30 and ant_loc in free_ants:
+#                        # run
+#                        directions = set(self.rose).difference(ants.direction(ant_loc, enemy))
+#                        for direction in directions:
+#                            if self.do_move_direction(ant_loc, direction, free_ants):
+#                                break
+#                        # and call for help
+#                        #close_ants = self.path_finder.BFS(ant_loc, set(free_ants)-set([ant_loc]), self.possible_moves(self.water), 3, 10, True)
+#                        #for ant_path in close_ants:
+#                        #    self.do_move_location(ant_path[2], ant_path[1][ant_path[2]], free_ants)
                         
-            elif len(around_enemys) > 1:
-                friends_around = self.get_radius(ant_loc, self.dr).intersection(free_ants)
-                if len(friends_around) < 1: # if alone, run
-                    dist = [ d(ant_loc, hill) for hill in ants.my_hills() ]
-                    dist.append(100)
-                    if min(dist) > 30 and ant_loc in free_ants:
-                        directions = set(self.rose)
-                        for enemy in around_enemys:
-                            directions.difference_update(ants.direction(ant_loc, enemy))
-                        for direction in directions:
-                            if self.do_move_direction(ant_loc, direction, free_ants):
-                                break
+#            elif len(around_enemys) > 1:
+#                friends_around = self.get_radius(ant_loc, self.dr).intersection(free_ants)
+#                if len(friends_around) < 1: # if alone, run
+#                    dist = [ d(ant_loc, hill) for hill in ants.my_hills() ]
+#                    dist.append(100)
+#                    if min(dist) > 30 and ant_loc in free_ants:
+#                        directions = set(self.rose)
+#                        for enemy in around_enemys:
+#                            directions.difference_update(ants.direction(ant_loc, enemy))
+#                        for direction in directions:
+#                            if self.do_move_direction(ant_loc, direction, free_ants):
+#                                break
         
         
         # continue with attaking_orders
