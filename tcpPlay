@@ -1,0 +1,3 @@
+#!/bin/bash
+
+python tcp/tcpclient.py ants.fluxid.pl 2081 "python MyBot.py" nmalbran 987q654a321z $1
