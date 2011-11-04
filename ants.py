@@ -160,6 +160,11 @@ class Ants():
         return [(row, col) for (row, col), owner in self.ant_list.items()
                     if owner == MY_ANT]
 
+    def my_dead_ants(self):
+        'return a list of all my dead ants'
+        return [(row, col) for (row, col), owner in self.dead_list.items()
+                    if owner == MY_ANT]
+        
     def enemy_ants(self):
         'return a list of all visible enemy ants ((row, col), owner)'
         return [((row, col), owner)
