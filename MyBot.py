@@ -42,6 +42,8 @@ class MyBot:
         self.protect = {}
         # exits from hills
         self.exitway = {}
+        # defensive wall
+        self.shield = {}
         self.first = True
         
         self.rose = ['n','e','s','w']
@@ -122,6 +124,19 @@ class MyBot:
     def get_radius(self, loc, area):
         a_row, a_col = loc
         return set([ ((a_row+v_row)%self.rows, (a_col+v_col)%self.cols) for v_row, v_col in area])
+        
+    def get_shield(self, hill):
+        h_row, h_col = hill
+        shield = set([ (row%self.rows, col%self.cols) for row in range(h_row-2, h_row+2) for col in range(h_col-2, h_col+2) ])
+        shield.remove(hill)
+        shield.difference_update(self.water)
+        shield.difference_update(set([((row+2)%self.rows, (col+2)%self.cols), ((row+2)%self.rows, (col-2)%self.cols),
+                                      ((row-2)%self.rows, (col-2)%self.cols), ((row-2)%self.rows, (col+2)%self.cols)]))
+        d = self.ants.euclidian_distance
+        dist = [ (d(loc,hill), loc) for loc in shield ]
+        dist.sort()
+        return dist
+        
     
     # do turn is run once per turn
     # the ants class has the game state and is updated by the Ants.run method
@@ -153,6 +168,7 @@ class MyBot:
                 self.neighbourhood[hill] = self.get_radius(hill, self.va) - self.water
                 self.protect[hill] = set([(h_row+1,h_col+1), (h_row-1,h_col-1), (h_row-1,h_col+1), (h_row+1,h_col-1)]) - self.water
                 self.exitway[hill] = [((h_row+1,h_col), ['s']), ((h_row-1,h_col), ['n']), ((h_row,h_col+1), ['e']), ((h_row,h_col-1), ['w'])]
+                self.shield[hill] = self.get_shield(hill)
         
         # remove water from unseen spaces
         #self.unseen.difference_update(ants.water())
@@ -168,14 +184,29 @@ class MyBot:
             if enemy_hill in free_ants:
                 self.hills.remove(enemy_hill)
         
-        # find and attack enemy ants near my hills
+        # find and attack enemy ants near my hills or make a shield around hill
         for hill in ants.my_hills():
             enemys_near_hill = set(ants.enemy_ants_nn()) & self.neighbourhood[hill]
-            for enemy_ant in enemys_near_hill:
-                paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), 3, 10, True)
-                if len(paths) > 0:
-                    for path in paths:
-                        self.do_move_location(path[2], path[1][path[2]], free_ants)
+            if len(enemys_near_hill) > 2:
+                shield = self.shield[hill][:]
+                if self.not_spawned_ants > 2: # if hidden ants, expand shield to let them out
+                    shield.reverse()
+                
+                for dist, loc in shield:
+                    if loc in free_ants: # if there is an ant, stay there
+                        free_ants.remove(loc)
+                        self.prox_dest.add(loc)
+                    else: # search close ants and move it there
+                        path = self.path_finder.BFS(loc, free_ants, self.possible_moves(self.water | set(ants.my_hills())), 1, 20, True)
+                        if len(path) > 0:
+                            self.do_move_location(path[0][2], path[0][1][path[0][2]], free_ants)
+                
+            else:
+                for enemy_ant in enemys_near_hill:
+                    paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), 3, 10, True)
+                    if len(paths) > 0:
+                        for path in paths:
+                            self.do_move_location(path[2], path[1][path[2]], free_ants)
         
         # check time left
         if t() < 10:
