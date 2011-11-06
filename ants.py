@@ -67,7 +67,8 @@ class Ants():
                 elif key == 'rows':
                     self.rows = int(tokens[1])
                 elif key == 'player_seed':
-                    random.seed(int(tokens[1]))
+                    #random.seed(int(tokens[1]))
+                    self.player_seed = int(tokens[1])
                 elif key == 'turntime':
                     self.turntime = int(tokens[1])
                 elif key == 'loadtime':
