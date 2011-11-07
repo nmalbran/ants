@@ -187,9 +187,9 @@ class MyBot:
         # find and attack enemy ants near my hills or make a shield around hill
         for hill in ants.my_hills():
             enemys_near_hill = set(ants.enemy_ants_nn()) & self.neighbourhood[hill]
-            if len(enemys_near_hill) > 2:
+            if len(enemys_near_hill) > 1:
                 shield = self.shield[hill][:]
-                if self.not_spawned_ants > 2: # if hidden ants, expand shield to let them out
+                if self.not_spawned_ants > 10: # if hidden ants, expand shield to let them out
                     shield.reverse()
                 
                 for dist, loc in shield:
@@ -203,10 +203,9 @@ class MyBot:
                 
             else:
                 for enemy_ant in enemys_near_hill:
-                    paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), 3, 10, True)
+                    paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), 1, 10, True)
                     if len(paths) > 0:
-                        for path in paths:
-                            self.do_move_location(path[2], path[1][path[2]], free_ants)
+                        self.do_move_location(path[0][2], path[0][1][path[0][2]], free_ants)
         
         # check time left
         if t() < 10:
