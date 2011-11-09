@@ -66,7 +66,7 @@ class MyBot:
         random.seed(ants.player_seed)
         #self.unseen = [ (r,c) for r in range(ants.rows) for c in range(ants.cols) ]
         
-        self.explore_map = ExploreMap(self.rows, self,cols)
+        self.explore_map = ExploreMap(self.rows, self.cols, 3)
         
         # precalculate squares around an ant, of radius sqrt(rad2)
         def get_pre_radius(rad2):
@@ -158,6 +158,8 @@ class MyBot:
         # update new water space found
         self.water.update(ants.water())
         
+        self.explore_map.update(ants)
+        
         # ants that have'nt moved yet
         free_ants = ants.my_ants()[:]
         # numbers of ants, used to count not spawned ants
@@ -208,7 +210,7 @@ class MyBot:
                 for enemy_ant in enemys_near_hill:
                     paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), 1, 10, True)
                     if len(paths) > 0:
-                        self.do_move_location(path[0][2], path[0][1][path[0][2]], free_ants)
+                        self.do_move_location(paths[0][2], paths[0][1][paths[0][2]], free_ants)
         
         # check time left
         if t() < 10:
@@ -355,20 +357,6 @@ class MyBot:
 
 
         # estimate timing start
-#        if self.fifth == 1:
-#            ini = time.time()
-            
-        # calculate distance from every free ant to the enemy hill
-#        if t()-self.times['enemy_hill'] > 30:
-#            ant_dist = [ (d(ant_loc, hill_loc), ant_loc, hill_loc) for hill_loc in self.hills for ant_loc in free_ants ]
-#            ant_dist.sort()
-        
-        # estimate timing stop
-#        if self.fifth == 1:
-#            self.times['enemy_hill'] = int(1000*(time.time()-ini))+3
-            #print("enemy-hill: "+str(self.times['enemy_hill']))
-
-        # estimate timing start
         if self.fifth == 2:
             #num = len(free_ants)+1
             ini = time.time()
@@ -380,28 +368,10 @@ class MyBot:
                 for path in paths:
                     if path[2] in free_ants and self.do_move_location(path[2], path[1][path[2]], free_ants):
                         self.attaking_orders[path[1][path[2]]] = (hill_loc, path[1])
-
-
-        # attack hills
-#        for dist, ant_loc, hill_loc in ant_dist:
-#            if t()-self.times['attack_hill'] < 20:
-#                break
-#            if ant_loc in free_ants:
-#                if dist < 60:
-#                    path = self.path_finder.BFS(ant_loc, set([hill_loc]), self.possible_moves(self.water), 1, 30)
-#                    if len(path) > 0 and self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
-#                        self.attaking_orders[path[0][1][ant_loc]] = (path[0][2], path[0][1])
-                #else:
-                #    self.do_move_location(ant_loc, hill_loc, free_ants)
         
         # estimate timing stop
         if self.fifth == 2:
             self.times['attack_hill'] = int(1000*(time.time()-ini))+2#/num +2
-        
-        # update unseen spaces, ~5-7ms
-        #v = ants.visible
-        #unseen = [ loc for loc in self.unseen if not v(loc) ]
-        #self.unseen = unseen
         
         # check if we still have time left to calculate more orders
         if t() < 25:
@@ -426,10 +396,12 @@ class MyBot:
         for ant_loc in free_ants[:]:
             if t()-self.times['unseen'] < 20:
                 break
-            random.shuffle(self.rose)
-            path = self.path_finder.BFSexplore(ant_loc, self.possible_moves(self.water.union(self.prox_dest)), 15)
-            if len(path) > 0 and self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
-                self.explore_orders[path[0][1][ant_loc]] = (path[0][2], path[0][1])
+            new_locs = self.explore_map.high_list(ant_loc)
+            for val, new_loc in new_locs:
+                path = self.path_finder.BFS(ant_loc, [new_loc], self.possible_moves(self.water), 1, 6)
+                if len(path) > 0 and self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
+                    self.explore_orders[path[0][1][ant_loc]] = (path[0][2], path[0][1])
+                    break
 
         # estimate timing stop
         if self.fifth == 4:
@@ -443,8 +415,8 @@ class MyBot:
                 self.not_spawned_ants+=1
 
 
-        #if self.fifth == 4:
-        #    print("time left: "+str(t()))
+        if self.fifth == 4:
+            print("time left: "+str(t()))
             
 if __name__ == '__main__':
     # psyco will speed up python a little, but is not needed

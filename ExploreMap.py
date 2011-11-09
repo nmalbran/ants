@@ -2,7 +2,7 @@
 
 class ExploreMap():
 
-    def __init__(self, rows, cols):
+    def __init__(self, rows, cols, rad):
         self.rows = rows
         self.cols = cols
         self.map = [[0]*cols for row in range(rows)]
@@ -23,7 +23,7 @@ class ExploreMap():
                         ))
             return offsets
             
-        rad = 3
+        #rad = 3
         self.visible_area = get_pre_radius(rad)
         radXrad = [(d_row%self.rows-self.rows, d_col%self.cols-self.cols)
                                 for d_row in range(-(rad+1), rad+1)
@@ -82,6 +82,14 @@ class ExploreMap():
                 high = (row,col)
                 high_val = self.map[row][col]
         return high
+    
+    def high_list(self, loc):
+        possibles = self.get_radius(loc, self.border_area)
+        order =[ (self.map[r][c], (r,c)) for r,c in possibles ] 
+        order.sort()
+        return order
+
+
     
     def print_map(self, center):
         c_row, c_col = center
