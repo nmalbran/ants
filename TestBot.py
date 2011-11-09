@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 from ants import *
-from CounterMap import CounterMap
+from ExploreMap import ExploreMap
+from PathFinder import PathFinder
 
 class TestBot:
     def __init__(self):
         self.rose = ['n','e','s','w']
         self.water = set()
+        self.path_finder = PathFinder()
         
     def do_setup(self, ants):
-        self.map = CounterMap(ants.rows, ants.cols)
+        self.map = ExploreMap(ants.rows, ants.cols)
+        
         
     def possible_moves(self, obstacles):
         def temp(loc):
@@ -40,16 +43,17 @@ class TestBot:
         self.water.update(ants.water())
         self.prox_dest = set(ants.my_hills())
         
-        self.map.update(ants.my_ants(), self.possible_moves(self.water), ants.water(), ants.food())
-
-        self.map.print_map(ants.my_hills()[0])
+        #self.map.update(ants.my_ants(), self.possible_moves(self.water), ants.water(), ants.food())
+        self.map.update(ants)
+    
+        #self.map.print_map(ants.my_hills()[0])
         
         for ant in ants.my_ants():
             new_loc = self.map.high_direction(ant)
             self.do_move_location(ant, new_loc)
             
         
-        print("time left: "+str(ants.time_remaining()))
+        #print("time left: "+str(ants.time_remaining()))
             
             
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from ants import *
 from PathFinder import PathFinder
+from ExploreMap import ExploreMap
 import random
 from math import sqrt
 import time
@@ -64,6 +65,8 @@ class MyBot:
         #fr2 = ants.spawnradius2
         random.seed(ants.player_seed)
         #self.unseen = [ (r,c) for r in range(ants.rows) for c in range(ants.cols) ]
+        
+        self.explore_map = ExploreMap(self.rows, self,cols)
         
         # precalculate squares around an ant, of radius sqrt(rad2)
         def get_pre_radius(rad2):
