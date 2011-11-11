@@ -1,3 +1,5 @@
+from random import shuffle
+
 class ExploreMap():
 
     def __init__(self, rows, cols, rad):
@@ -42,7 +44,7 @@ class ExploreMap():
                                 for d_row in range(-(rad+1), rad+1)
                                 for d_col in range(-(rad+1), rad+1)]
         self.border_area = set(radXrad) - set(self.visible_area)
-        self.ring = get_pre_ring(6,7)
+        self.ring = get_pre_ring(6,8)
 
 
 
@@ -98,6 +100,7 @@ class ExploreMap():
         return high
 
     def high_list(self, loc):
+        shuffle(self.ring)
         possibles = self.get_radius(loc, self.ring)
         order =[ (self.map[r][c], (r,c)) for r,c in possibles ]
         order.sort()
@@ -109,8 +112,6 @@ class ExploreMap():
         c_row, c_col = center
         for row in range(c_row-10, c_row+10):
             print self.map[row%self.rows][(c_col-10)%self.cols:(c_col+10)%self.cols]
-
-            # ver cuadros al rededor de vision con mayor puntaje, usar bfs para llegar
 
     def fill_area(self, area, num):
         for r,c in area:
