@@ -40,7 +40,7 @@ class MyBot:
         self.cols = ants.cols
         #random.seed(ants.player_seed)
 
-        self.explore_map = ExploreMap(self.rows, self.cols, 3)
+        self.explore_map = ExploreMap(self.rows, self.cols, 3, ants.viewradius2)
 
         # precalculate squares around an ant, of radius sqrt(rad2)
         def get_pre_radius(rad2):
@@ -239,7 +239,7 @@ class MyBot:
                     free_ants.remove(defend_loc)
                     self.prox_dest.add(defend_loc)
                 else:
-                    closest = self.path_finder.BFS(defend_loc, free_ants, self.possible_moves(self.water), 1, 10, True)
+                    closest = self.path_finder.BFS(defend_loc, free_ants, self.possible_moves(self.water), backward=True)
                     if len(closest) > 0:
                         self.do_move_location(closest[0][2], closest[0][1][closest[0][2]], free_ants)
 
@@ -334,7 +334,7 @@ class MyBot:
 
         if time_left()-self.times_stats['attack_hill'] > 20:
             for hill_loc in self.enemy_hills:
-                paths = self.path_finder.BFS(hill_loc, set(free_ants), possible_moves, 30, 40, True)
+                paths = self.path_finder.BFS(hill_loc, set(free_ants), possible_moves, num=30, max_cost=40, backward=True)
                 for path in paths:
                     if path[2] in free_ants and self.do_move_location(path[2], path[1][path[2]], free_ants):
                         self.attaking_orders[path[1][path[2]]] = (hill_loc, path[1])
@@ -352,11 +352,17 @@ class MyBot:
         for ant_loc in free_ants[:]:
             if time_left()-self.times_stats['unseen'] < 20:
                 break
-            new_locs = self.explore_map.high_list(ant_loc)
-            paths = self.path_finder.BFS(ant_loc, [loc for val,loc in new_locs], possible_moves, 15, 15)
-            for path in paths:
-                if self.do_move_location(ant_loc, path[1][ant_loc], free_ants):
-                    self.explore_orders[path[1][ant_loc]] = (path[2], path[1])
+
+            new_locs = self.explore_map.all_val_locs(ant_loc)
+            for val, locs in new_locs:
+                break2 = False
+                paths = self.path_finder.BFS(ant_loc, set(locs), possible_moves, num=15, max_cost=15)
+                for path in paths:
+                    if self.do_move_location(ant_loc, path[1][ant_loc], free_ants):
+                        self.explore_orders[path[1][ant_loc]] = (path[2], path[1])
+                        break2 = True
+                        break
+                if break2:
                     break
 
         if self.fifth_turn == stat_update_turn:
@@ -377,13 +383,13 @@ class MyBot:
                         free_ants.remove(loc)
                         self.prox_dest.add(loc)
                     else: # search close ants and move it there
-                        path = self.path_finder.BFS(loc, free_ants, possible_moves, 1, 20, True)
+                        path = self.path_finder.BFS(loc, free_ants, possible_moves, max_cost=20, backward=True)
                         if len(path) > 0:
                             self.do_move_location(path[0][2], path[0][1][path[0][2]], free_ants)
 
             else:
                 for enemy_ant in enemys_near_hill:
-                    paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), 1, 10, True)
+                    paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), backward=True)
                     if len(paths) > 0:
                         self.do_move_location(paths[0][2], paths[0][1][paths[0][2]], free_ants)
 
@@ -402,7 +408,7 @@ class MyBot:
                     possible_moves = self.possible_moves(self.water)
                     for ant in friends_around:
                         if ant in free_ants:
-                            path = self.path_finder.BFS(ant, [enemy], possible_moves, 1, 6, False)
+                            path = self.path_finder.BFS(ant, [enemy], possible_moves, max_cost=6)
                             if len(path) >0:
                                 self.do_move_location(ant, path[0][1][ant], free_ants)
                 else:

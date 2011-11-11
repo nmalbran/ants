@@ -1,8 +1,9 @@
 from random import shuffle
+from math import sqrt
 
 class ExploreMap():
 
-    def __init__(self, rows, cols, rad):
+    def __init__(self, rows, cols, rad, view_radius2):
         self.rows = rows
         self.cols = cols
         self.map = [[100]*cols for row in range(rows)]
@@ -39,12 +40,14 @@ class ExploreMap():
             return offsets
 
         #rad = 3
-        self.visible_area = get_pre_radius(rad)
+        self.clear_area = get_pre_radius(rad)
         radXrad = [(d_row%self.rows-self.rows, d_col%self.cols-self.cols)
                                 for d_row in range(-(rad+1), rad+1)
                                 for d_col in range(-(rad+1), rad+1)]
-        self.border_area = set(radXrad) - set(self.visible_area)
+        self.border_area = set(radXrad) - set(self.clear_area)
         self.ring = get_pre_ring(6,8)
+
+        self.visible_area = get_pre_radius(int(sqrt(view_radius2)+1))
 
 
 
@@ -56,7 +59,7 @@ class ExploreMap():
     def update(self, ants):
         visibles = set()
         rad = self.get_radius
-        va = self.visible_area
+        va = self.clear_area
 
         for loc in ants.my_ants():
             visibles.update(rad(loc, va))
@@ -80,7 +83,7 @@ class ExploreMap():
                 self.map[r][c]-=1
 
         for r,c in new_water:
-            self.map[r][c] = -1000
+            self.map[r][c] = -2000
 
 
 
@@ -99,13 +102,31 @@ class ExploreMap():
                 high_val = self.map[row][col]
         return high
 
-    def high_list(self, loc):
-        shuffle(self.ring)
-        possibles = self.get_radius(loc, self.ring)
-        order =[ (self.map[r][c], (r,c)) for r,c in possibles ]
-        order.sort()
-        return order
+    def all_val_locs(self, loc):
+        possibles_spaces = self.get_radius(loc, set(self.visible_area)-self.water-set([loc]))
+        val_vs_spaces =[ (self.map[r][c], (r,c)) for r,c in possibles_spaces ]
 
+        values = set([ val for val, loc in val_vs_spaces ])
+
+        ordered_spaces = []
+        for value in values:
+            locs = [loc for val,loc in val_vs_spaces if val == value]
+            shuffle(locs)
+            ordered_spaces.append((value, locs))
+
+        ordered_spaces.sort(reverse=True)
+        return ordered_spaces
+        # [ (dist1, [loc1, loc2, loc3]), (dist2, [loc1, loc2, loc3]), (dist3, [loc1, loc2, loc3]),]
+
+    def max_val_locs(self, loc):
+        possibles_spaces = self.get_radius(loc, self.ring)
+        val_vs_loc =[ (self.map[r][c], (r,c)) for r,c in possibles_spaces ]
+
+        values = set([ val for val, loc in val_vs_loc ])
+        max_val = max(values)
+        locs = [loc for val,loc in val_vs_loc if val == max_val]
+
+        return locs
 
 
     def print_map(self, center):
