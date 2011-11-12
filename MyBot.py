@@ -239,9 +239,9 @@ class MyBot:
                     free_ants.remove(defend_loc)
                     self.prox_dest.add(defend_loc)
                 else:
-                    closest = self.path_finder.BFS(defend_loc, free_ants, self.possible_moves(self.water), backward=True)
-                    if len(closest) > 0:
-                        self.do_move_location(closest[0][2], closest[0][1][closest[0][2]], free_ants)
+                    paths = self.path_finder.BFS(defend_loc, free_ants, self.possible_moves(self.water), backward=True)
+                    for path in paths:
+                        self.do_move_location(path['source'], path['path'][path['source']], free_ants)
 
     def unblock_own_hill(self, initial_n_ants, free_ants):
         my_hills = self.ants.my_hills()
@@ -315,12 +315,12 @@ class MyBot:
 
         if time_left()-self.times_stats['food'] > 20:
             for ant_loc in free_ants[:]:
-                path = self.path_finder.BFS(ant_loc, foods-self.food_targets, possible_moves)
-                if len(path) > 0:
-                    if self.do_move_location(ant_loc, path[0][1][ant_loc], free_ants):
-                        self.food_targets.add(path[0][2])
-                        self.food_orders[path[0][1][ant_loc]] = (path[0][2], path[0][1])
-                        self.food_gathering_ants.append(path[0][1][ant_loc])
+                paths = self.path_finder.BFS(ant_loc, foods-self.food_targets, possible_moves)
+                for path in paths:
+                    if self.do_move_location(ant_loc, path['path'][ant_loc], free_ants):
+                        self.food_targets.add(path['goal'])
+                        self.food_orders[path['path'][ant_loc]] = (path['goal'], path['path'])
+                        self.food_gathering_ants.append(path['path'][ant_loc])
 
         if self.fifth_turn == stat_update_turn:
             self.times_stats['food'] = int(1000*(time.time()-ini))+2
@@ -336,8 +336,8 @@ class MyBot:
             for hill_loc in self.enemy_hills:
                 paths = self.path_finder.BFS(hill_loc, set(free_ants), possible_moves, num=30, max_cost=40, backward=True)
                 for path in paths:
-                    if path[2] in free_ants and self.do_move_location(path[2], path[1][path[2]], free_ants):
-                        self.attaking_orders[path[1][path[2]]] = (hill_loc, path[1])
+                    if path['source'] in free_ants and self.do_move_location(path['source'], path['path'][path['source']], free_ants):
+                        self.attaking_orders[path['path'][path['source']]] = (hill_loc, path['path'])
 
         if self.fifth_turn == stat_update_turn:
             self.times_stats['attack_hill'] = int(1000*(time.time()-ini))+2#/num +2
@@ -358,8 +358,10 @@ class MyBot:
                 break2 = False
                 paths = self.path_finder.BFS(ant_loc, set(locs), possible_moves, num=15, max_cost=15)
                 for path in paths:
-                    if self.do_move_location(ant_loc, path[1][ant_loc], free_ants):
-                        self.explore_orders[path[1][ant_loc]] = (path[2], path[1])
+                    print(path)
+                    print(ant_loc)
+                    if self.do_move_location(ant_loc, path['path'][ant_loc], free_ants):
+                        self.explore_orders[path['path'][ant_loc]] = (path['goal'], path['path'])
                         break2 = True
                         break
                 if break2:
@@ -383,15 +385,15 @@ class MyBot:
                         free_ants.remove(loc)
                         self.prox_dest.add(loc)
                     else: # search close ants and move it there
-                        path = self.path_finder.BFS(loc, free_ants, possible_moves, max_cost=20, backward=True)
-                        if len(path) > 0:
-                            self.do_move_location(path[0][2], path[0][1][path[0][2]], free_ants)
+                        paths = self.path_finder.BFS(loc, free_ants, possible_moves, max_cost=20, backward=True)
+                        for path in paths:
+                            self.do_move_location(path['source'], path['path'][path['source']], free_ants)
 
             else:
                 for enemy_ant in enemys_near_hill:
                     paths = self.path_finder.BFS(enemy_ant, free_ants, self.possible_moves(self.water), backward=True)
-                    if len(paths) > 0:
-                        self.do_move_location(paths[0][2], paths[0][1][paths[0][2]], free_ants)
+                    for path in paths:
+                        self.do_move_location(path['source'], path['path'][path['source']], free_ants)
 
     def fight(self, free_ants):
         # prevent fighting
@@ -408,9 +410,9 @@ class MyBot:
                     possible_moves = self.possible_moves(self.water)
                     for ant in friends_around:
                         if ant in free_ants:
-                            path = self.path_finder.BFS(ant, [enemy], possible_moves, max_cost=6)
-                            if len(path) >0:
-                                self.do_move_location(ant, path[0][1][ant], free_ants)
+                            paths = self.path_finder.BFS(ant, [enemy], possible_moves, max_cost=6)
+                            for path in paths:
+                                self.do_move_location(ant, path['path'][ant], free_ants)
                 else:
                     dist = [ d(ant_loc, hill) for hill in self.ants.my_hills() ]
                     dist.append(100)

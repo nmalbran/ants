@@ -116,7 +116,8 @@ class ExploreMap():
 
         ordered_spaces.sort(reverse=True)
         return ordered_spaces
-        # [ (dist1, [loc1, loc2, loc3]), (dist2, [loc1, loc2, loc3]), (dist3, [loc1, loc2, loc3]),]
+        # [ (val1, [loc1, loc2, loc3]), (val2, [loc1, loc2, loc3]), (val3, [loc1, loc2, loc3]),]
+        # val1 > val2 > val3
 
     def max_val_locs(self, loc):
         possibles_spaces = self.get_radius(loc, self.ring)

@@ -6,8 +6,8 @@ class PathFinder():
 
     def __init__(self):
         pass
-        
-    
+
+
     def BFS(self, source, goals, childs, num=1, max_cost=10, backward=False):
         """ Find paths from source to goals using BFS,
             with a max lenght path of max_cost,
@@ -18,7 +18,7 @@ class PathFinder():
         cost = 0
         founds = []
         n_founds = 0
-        
+
         q = deque()
         q.append(tree)
         visited.add(source)
@@ -39,7 +39,7 @@ class PathFinder():
                     q.append(Node(child, v, nc))
                     if cost < nc:
                         cost = nc
-        
+
         paths = []
         for f in founds:
             path = {}
@@ -49,20 +49,22 @@ class PathFinder():
                 i = i.father
             if backward:
                 path = dict(zip(path.values(),path.keys()))
-                paths.append((f.cost, path, f.loc))
+                #paths.append((f.cost, path, f.loc))
+                paths.append((f.cost, {'path': path, 'source': f.loc, 'len': f.cost}))
             else:
-                paths.append((f.cost, path, f.loc))
+                paths.append((f.cost, {'path': path, 'goal': f.loc, 'len': f.cost}))
+                #paths.append((f.cost, path, f.loc))
 
         if n_founds > 1:
             paths.sort()
-        return paths # (cost, path, location)
+        return [path for cost, path in paths] # (cost, path, location)
 
     def BFSexplore(self, source, childs, max_cost=7, num=1):
         tree = Node(source, None, 0)
         visited = set()
         cost = 0
         founds = []
-        
+
         q = deque()
         q.append(tree)
         visited.add(source)
@@ -84,7 +86,7 @@ class PathFinder():
                         q.append(Node(child, v, nc))
                         if cost < nc:
                             cost = nc
-        
+
         paths = []
         for f in founds:
             path = {}
@@ -102,7 +104,7 @@ class PathFinder():
 #        #openlist = PriorityQueueSet([(0, source)])
 #        openlist = [(0, source)]
 #        closelist = []
-        
+
 #        while 1:
 #            openlist.sort()
 #            n = openlist[0]
@@ -112,7 +114,7 @@ class PathFinder():
 #            openlist.remove(n)
 #            closelist.append(n[1])
 #            children = childs(n[1])
-            
+
 #            for child in children:
 #                cost = g(n[1]) + 1
 #                if child in openlist and cost < g(child):
@@ -120,23 +122,23 @@ class PathFinder():
 #                if child in closelist and cost < g(child):
 #                    closelist.remove(child)
 #                if child not in openlist and child not in closelist:
-                    
-        
-        
+
+
+
 
 class Node():
     def __init__(self, loc, father, cost):
         self.loc = loc
         self.father = father
         self.cost = cost
-        
+
 
 class PriorityQueueSet(object):
     """ Combined priority queue and set data structure. Acts like
         a priority queue, except that its items are guaranteed to
         be unique.
 
-        Provides O(1) membership test, O(log N) insertion and 
+        Provides O(1) membership test, O(log N) insertion and
         O(log N) removal of the smallest item.
 
         Important: the items of this data structure must be both
@@ -149,7 +151,7 @@ class PriorityQueueSet(object):
         """ Create a new PriorityQueueSet.
 
             items:
-                An initial item list - it can be unsorted and 
+                An initial item list - it can be unsorted and
                 non-unique. The data structure will be created in
                 O(N).
         """
@@ -176,6 +178,6 @@ class PriorityQueueSet(object):
         if not (item in self.set):
             self.set[item] = True
             heapq.heappush(self.heap, item)
-    
+
     def empty(self):
         return len(self.set) == 0
