@@ -178,7 +178,7 @@ class MyBot:
         a_row, a_col = loc
         return set([ ((a_row+v_row)%self.rows, (a_col+v_col)%self.cols) for v_row, v_col in area])
 
-    def get_shield(self, hill):
+    def get_full_shield(self, hill):
         # .sss.
         # sssss
         # ssHss
@@ -189,8 +189,43 @@ class MyBot:
         shield = set([ (row%self.rows, col%self.cols) for row in range(h_row-2, h_row+2) for col in range(h_col-2, h_col+2) ])
         shield.remove(hill)
         shield.difference_update(self.water)
-        shield.difference_update(set([((row+2)%self.rows, (col+2)%self.cols), ((row+2)%self.rows, (col-2)%self.cols),
-                                      ((row-2)%self.rows, (col-2)%self.cols), ((row-2)%self.rows, (col+2)%self.cols)]))
+        shield.difference_update(set([((h_row+2)%self.rows, (h_col+2)%self.cols), ((h_row+2)%self.rows, (h_col-2)%self.cols),
+                                      ((h_row-2)%self.rows, (h_col-2)%self.cols), ((h_row-2)%self.rows, (h_col+2)%self.cols)]))
+        d = self.ants.euclidian_distance
+        dist = [ (d(loc,hill), loc) for loc in shield ]
+        dist.sort()
+        return dist
+
+    def get_inner_shield(self, hill):
+        # .....
+        # .sss.
+        # .sHs.
+        # .sss.
+        # .....
+
+        h_row, h_col = hill
+        shield = set([ (row%self.rows, col%self.cols) for row in range(h_row-1, h_row+1) for col in range(h_col-1, h_col+1) ])
+        shield.remove(hill)
+
+        d = self.ants.euclidian_distance
+        dist = [ (d(loc,hill), loc) for loc in shield ]
+        dist.sort()
+        return dist
+
+    def get_outer_shield(self, hill):
+        # .sss.
+        # s...s
+        # s.H.s
+        # s...s
+        # .sss.
+
+        h_row, h_col = hill
+        shield = [ ((h_row-2)%self.rows, (h_col-1)%self.cols), ((h_row-2)%self.rows, (h_col)%self.cols), ((h_row-2)%self.rows, (h_col+1)%self.cols),
+                   ((h_row-1)%self.rows, (h_col-2)%self.cols),                                           ((h_row-1)%self.rows, (h_col+2)%self.cols),
+                   ((h_row)%self.rows,   (h_col-2)%self.cols),                                           ((h_row)%self.rows,   (h_col+2)%self.cols),
+                   ((h_row+1)%self.rows, (h_col-2)%self.cols),                                           ((h_row+1)%self.rows, (h_col+2)%self.cols),
+                   ((h_row+2)%self.rows, (h_col-1)%self.cols), ((h_row+2)%self.rows, (h_col)%self.cols), ((h_row+2)%self.rows, (h_col+1)%self.cols) ]
+
         d = self.ants.euclidian_distance
         dist = [ (d(loc,hill), loc) for loc in shield ]
         dist.sort()
@@ -220,7 +255,7 @@ class MyBot:
             self.neighbourhood[hill] = self.get_radius(hill, self.ant_view_area) - self.water
             self.hill_defending_locations[hill] = set([(h_row+1,h_col+1), (h_row-1,h_col-1), (h_row-1,h_col+1), (h_row+1,h_col-1)]) - self.water
             self.hill_exitway[hill] = [((h_row+1,h_col), ['s']), ((h_row-1,h_col), ['n']), ((h_row,h_col+1), ['e']), ((h_row,h_col-1), ['w'])]
-            self.hill_shield[hill] = self.get_shield(hill)
+            self.hill_shield[hill] = self.get_full_shield(hill)
 
     def maintain_ants_at_defending_location(self, initial_n_ants, free_ants):
         my_hills = self.ants.my_hills()
