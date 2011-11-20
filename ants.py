@@ -87,11 +87,11 @@ class Ants():
     def update(self, data):
         'parse engine input and update the game state'
         # start timer
-        self.turn_start_time = time.clock()
-        
+        self.turn_start_time = time.time()
+
         # reset vision
         self.vision = None
-        
+
         # clear hill, ant and food data
         self.hill_list = {}
         for row, col in self.ant_list.keys():
@@ -103,7 +103,7 @@ class Ants():
         for row, col in self.food_list:
             self.map[row][col] = LAND
         self.food_list = []
-        
+
         # update map and create new ant and food lists
         for line in data.split('\n'):
             line = line.strip().lower()
@@ -133,21 +133,21 @@ class Ants():
                         elif tokens[0] == 'h':
                             owner = int(tokens[3])
                             self.hill_list[(row, col)] = owner
-                        
+
     def time_remaining(self):
-        return self.turntime - int(1000 * (time.clock() - self.turn_start_time)) -5
-    
+        return self.turntime - int(1000 * (time.time() - self.turn_start_time)) -5
+
     def issue_order(self, order):
         'issue an order by writing the proper ant location and direction'
         (row, col), direction = order
         sys.stdout.write('o %s %s %s\n' % (row, col, direction))
         sys.stdout.flush()
-        
+
     def finish_turn(self):
         'finish the turn by writing the go line'
         sys.stdout.write('go\n')
         sys.stdout.flush()
-    
+
     def my_hills(self):
         return [loc for loc, owner in self.hill_list.items()
                     if owner == MY_ANT]
@@ -155,7 +155,7 @@ class Ants():
     def enemy_hills(self):
         return [(loc, owner) for loc, owner in self.hill_list.items()
                     if owner != MY_ANT]
-        
+
     def my_ants(self):
         'return a list of all my ants'
         return [(row, col) for (row, col), owner in self.ant_list.items()
@@ -165,7 +165,7 @@ class Ants():
         'return a list of all my dead ants'
         return [(row, col) for (row, col), owner in self.dead_list.items()
                     if owner == MY_ANT]
-        
+
     def enemy_ants(self):
         'return a list of all visible enemy ants ((row, col), owner)'
         return [((row, col), owner)
@@ -181,7 +181,7 @@ class Ants():
     def food(self):
         'return a list of all food locations'
         return self.food_list[:]
-        
+
     def water(self):
         'return a list of all water locations'
         return self.water_list[:]
@@ -190,7 +190,7 @@ class Ants():
         'true if not water'
         row, col = loc
         return self.map[row][col] != WATER
-    
+
     def unoccupied(self, loc):
         'true if no ants are at the location'
         row, col = loc
@@ -200,7 +200,7 @@ class Ants():
         'calculate a new location given the direction and wrap correctly'
         row, col = loc
         d_row, d_col = AIM[direction]
-        return ((row + d_row) % self.rows, (col + d_col) % self.cols)        
+        return ((row + d_row) % self.rows, (col + d_col) % self.cols)
 
         # Manhatten distance
     def distance(self, loc1, loc2):
@@ -210,7 +210,7 @@ class Ants():
         d_col = min(abs(col1 - col2), self.cols - abs(col1 - col2))
         d_row = min(abs(row1 - row2), self.rows - abs(row1 - row2))
         return d_row + d_col
-        
+
     def euclidian_distance(self, loc1, loc2):
         'calculate the closest distance between to locations'
         row1, col1 = loc1
@@ -247,7 +247,7 @@ class Ants():
             if col1 - col2 <= width2:
                 d.append('w')
         return d
-        
+
     def reverse_direction(self, loc1, loc2):
         'determine the 1 or 2 slowest (farest) directions to run from a location'
         row1, col1 = loc1
@@ -302,7 +302,7 @@ class Ants():
                     self.vision[a_row+v_row][a_col+v_col] = True
         row, col = loc
         return self.vision[row][col]
-    
+
     def render_text_map(self):
         'return a pretty string representing the map'
         tmp = ''

@@ -49,15 +49,13 @@ class PathFinder():
                 i = i.father
             if backward:
                 path = dict(zip(path.values(),path.keys()))
-                #paths.append((f.cost, path, f.loc))
                 paths.append((f.cost, {'path': path, 'source': f.loc, 'len': f.cost}))
             else:
                 paths.append((f.cost, {'path': path, 'goal': f.loc, 'len': f.cost}))
-                #paths.append((f.cost, path, f.loc))
 
         if n_founds > 1:
             paths.sort()
-        return [path for cost, path in paths] # (cost, path, location)
+        return [path for cost, path in paths]
 
     def BFSexplore(self, source, childs, max_cost=7, num=1):
         tree = Node(source, None, 0)

@@ -2,9 +2,11 @@
 from ants import *
 from PathFinder import PathFinder
 from ExploreMap import ExploreMap
+from WaveFrontMap import WaveFrontMap
 #import random
 from math import sqrt
 import time
+import sys
 
 class MyBot:
     def __init__(self):
@@ -57,11 +59,11 @@ class MyBot:
             return offsets
 
         extra_rad = 0
-        # rad*2 + extra_rad
+        # attack_rad*2 + extra_rad
         attack_rad2 = int(4*ants.attackradius2+(extra_rad**2)+4*extra_rad*sqrt(ants.attackradius2))
 
-        extra_rad = 1
-        # rad + extra_rad
+        extra_rad = -1
+        # attack_rad + extra_rad
         defend_rad2 = int(ants.attackradius2+(extra_rad**2)+2*extra_rad*sqrt(ants.attackradius2))
 
         self.ant_view_area = get_pre_radius(ants.viewradius2)
@@ -83,12 +85,13 @@ class MyBot:
         free_ants = ants.my_ants()[:]
         initial_n_ants = len(free_ants)
 
-        self.explore_map.update(ants)
-
         if self.first_turn:
+            #self.explore_map = WaveFrontMap(self.rows, self.cols, ants.my_hills()[0], ants.viewradius2)
             self.not_spawned_ants = initial_n_ants
             self.set_hills_areas()
             self.first_turn = False
+
+        self.explore_map.update(ants)
 
         self.detect_enemy_hills()
         self.check_razed_hills(free_ants)
@@ -121,6 +124,8 @@ class MyBot:
             return
 
         self.continue_with_explore_orders(free_ants)
+        if self.fifth_turn == 4:
+            print("time left before explore: "+str(time_left()))
         self.explore(free_ants, time_left, 3)
 
         if time_left() < 20:
@@ -343,9 +348,9 @@ class MyBot:
             self.times_stats['attack_hill'] = int(1000*(time.time()-ini))+2#/num +2
 
     def explore(self, free_ants, time_left, stat_update_turn):
-        if self.fifth_turn == stat_update_turn:
-            num = len(free_ants)+1
-            ini = time.time()
+    #if self.fifth_turn == stat_update_turn:
+        num = len(free_ants)+1
+        ini = time.time()
 
         possible_moves = self.possible_moves(self.water)
 
@@ -353,23 +358,36 @@ class MyBot:
             if time_left()-self.times_stats['unseen'] < 20:
                 break
 
+            # new_locs = self.explore_map.get_higher_locs(ant_loc)
+            # for val, loc in new_locs:
+            #     if self.do_move_location(ant_loc, loc, free_ants):
+            #         break
+
             new_locs = self.explore_map.all_val_locs(ant_loc)
             for val, locs in new_locs:
                 break2 = False
                 paths = self.path_finder.BFS(ant_loc, set(locs), possible_moves, num=15, max_cost=15)
                 for path in paths:
-                    print(path)
-                    print(ant_loc)
-                    if self.do_move_location(ant_loc, path['path'][ant_loc], free_ants):
-                        self.explore_orders[path['path'][ant_loc]] = (path['goal'], path['path'])
-                        break2 = True
-                        break
+
+                    #if ant_loc not in path['path']:
+                    #    sys.stdout.flush()
+                    #    sys.exit()
+                    try:
+                        if self.do_move_location(ant_loc, path['path'][ant_loc], free_ants):
+                            self.explore_orders[path['path'][ant_loc]] = (path['goal'], path['path'])
+                            break2 = True
+                            break
+                    except KeyError, e:
+                        #pass
+                        print(path)
+                        print(ant_loc)
+
                 if break2:
                     break
 
-        if self.fifth_turn == stat_update_turn:
-            self.times_stats['unseen'] = int(1000*(time.time()-ini))/num +2
-            #print("unseen: "+str(self.times_stats['unseen']))
+    #if self.fifth_turn == stat_update_turn:
+        self.times_stats['unseen'] = int(1000*(time.time()-ini))/num +2
+        #print("unseen: "+str(self.times_stats['unseen']))
 
     def defend_my_hills(self, free_ants):
         for hill in self.ants.my_hills():

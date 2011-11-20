@@ -1,5 +1,9 @@
 from collections import deque
+from math import sqrt
+from random import shuffle
 
+UNSEEN = 100
+WATER = -100
 
 class WaveFrontMap(object):
 
@@ -8,10 +12,11 @@ class WaveFrontMap(object):
         self.cols = cols
         self.origin = origin
 
-        self.map = [[-100]*cols for row in range(rows)]
+        self.map = [[UNSEEN]*cols for row in range(rows)]
         self.water = set()
         self.visited = set()
         self.known_locs = set()
+        self.known_land = set()
 
         self.next_loc = deque()
         self.next_loc.append((origin, 0))
@@ -34,11 +39,11 @@ class WaveFrontMap(object):
 
     def neighborhood(self, loc):
         row, col = loc
-        neighborhood = set([((row+1)%self.rows, (col+1)%self.cols),
-                        ((row+1)%self.rows, (col-1)%self.cols),
-                        ((row-1)%self.rows, (col+1)%self.cols),
-                        ((row-1)%self.rows, (col-1)%self.cols) ])
-        return neighborhood  - self.water
+        neighborhood = set([((row)%self.rows, (col+1)%self.cols),
+                            ((row)%self.rows, (col-1)%self.cols),
+                            ((row-1)%self.rows, (col)%self.cols),
+                            ((row+1)%self.rows, (col)%self.cols) ])
+        return neighborhood - self.water
 
     def get_radius(self, loc, area):
         a_row, a_col = loc
@@ -53,6 +58,8 @@ class WaveFrontMap(object):
             self.known_locs.update(rad(loc, va))
 
         self.water.update(ants.water())
+        self.known_land = self.known_locs - self.water
+
         self.wave_expand()
 
 
@@ -63,10 +70,11 @@ class WaveFrontMap(object):
             loc, val = self.next_loc.popleft()
             if loc in self.known_locs:
 
-                childs = self.neighborhood(loc)
+                childs = list(self.neighborhood(loc))
+                shuffle(childs)
                 for child in childs:
                     if child not in self.visited:
-                        visited.add(child)
+                        self.visited.add(child)
                         c_row, c_col = child
                         self.map[c_row][c_col] = val + 1
                         self.next_loc.append((child, val+1))
@@ -76,14 +84,22 @@ class WaveFrontMap(object):
 
         self.next_loc = pending_locs
 
+    def clear_dead_locs(self):
+        for loc in self.known_land:
+            neighborhood = self.neighborhood(loc)
+            if len(neighborhood) == 1:
+                row, col = loc
+                self.map[row][col] *= -1
 
-    def lower_locs(self,loc):
-        neighborhood = self.neighborhood(loc)
+
+    def get_lower_locs(self,loc):
+        neighborhood = list(self.neighborhood(loc))
+        shuffle(neighborhood)
         val_loc = [ (self.map[row][col], (row, col)) for row, col in neighborhood]
         val_loc.sort()
         return val_loc
 
-    def higher_locs(self,loc):
-        lowers = self.lower_locs(loc)
+    def get_higher_locs(self,loc):
+        lowers = self.get_lower_locs(loc)
         lowers.reverse()
         return lowers

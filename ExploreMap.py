@@ -103,7 +103,7 @@ class ExploreMap():
         return high
 
     def all_val_locs(self, loc):
-        possibles_spaces = self.get_radius(loc, set(self.visible_area)-self.water-set([loc]))
+        possibles_spaces = self.get_radius(loc, set(self.visible_area)) - self.water - set([loc])
         val_vs_spaces =[ (self.map[r][c], (r,c)) for r,c in possibles_spaces ]
 
         values = set([ val for val, loc in val_vs_spaces ])
