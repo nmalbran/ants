@@ -95,12 +95,12 @@ class MyBot:
 
         self.detect_enemy_hills()
         self.check_razed_hills(free_ants)
-        self.defend_my_hills(free_ants)
 
         if time_left() < 10:
             return
 
         self.maintain_ants_at_defending_location(initial_n_ants, free_ants)
+        self.defend_my_hills(free_ants)
 
         if time_left() < 10:
             return
@@ -124,8 +124,8 @@ class MyBot:
             return
 
         self.continue_with_explore_orders(free_ants)
-        if self.fifth_turn == 4:
-            print("time left before explore: "+str(time_left()))
+        #if self.fifth_turn == 4:
+        #    print("time left before explore: "+str(time_left()))
         self.explore(free_ants, time_left, 3)
 
         if time_left() < 20:
@@ -133,8 +133,8 @@ class MyBot:
 
         self.check_collected_food()
 
-        if self.fifth_turn == 4:
-            print("time left: "+str(time_left()))
+        #if self.fifth_turn == 4:
+        #    print("time left: "+str(time_left()))
 
 
 
@@ -205,12 +205,41 @@ class MyBot:
 
         h_row, h_col = hill
         shield = set([ (row%self.rows, col%self.cols) for row in range(h_row-1, h_row+1) for col in range(h_col-1, h_col+1) ])
+        shield.difference_update(self.water)
         shield.remove(hill)
 
         d = self.ants.euclidian_distance
         dist = [ (d(loc,hill), loc) for loc in shield ]
         dist.sort()
         return dist
+
+    def get_inner_odd_shield(self, hill):
+        # .....
+        # ..s..
+        # .sHs.
+        # ..s..
+        # .....
+
+        h_row, h_col = hill
+        shield = set([ ((h_row-1)%self.rows, (h_col)%self.cols), ((h_row)%self.rows, (h_col+1)%self.cols),
+                    ((h_row+1)%self.rows, (h_col)%self.cols), ((h_row)%self.rows, (h_col-1)%self.cols) ])
+
+        shield.difference_update(self.water)
+
+        d = self.ants.euclidian_distance
+        dist = [ (d(loc,hill), loc) for loc in shield ]
+        dist.sort()
+        return dist
+
+    def get_inner_even_shield(self, hill):
+        # .....
+        # .s.s.
+        # ..H..
+        # .s.s.
+        # .....
+
+        h_row, h_col = hill
+        return set([(h_row+1,h_col+1), (h_row-1,h_col-1), (h_row-1,h_col+1), (h_row+1,h_col-1)]) - self.water
 
     def get_outer_shield(self, hill):
         # .sss.
@@ -220,17 +249,34 @@ class MyBot:
         # .sss.
 
         h_row, h_col = hill
-        shield = [ ((h_row-2)%self.rows, (h_col-1)%self.cols), ((h_row-2)%self.rows, (h_col)%self.cols), ((h_row-2)%self.rows, (h_col+1)%self.cols),
-                   ((h_row-1)%self.rows, (h_col-2)%self.cols),                                           ((h_row-1)%self.rows, (h_col+2)%self.cols),
-                   ((h_row)%self.rows,   (h_col-2)%self.cols),                                           ((h_row)%self.rows,   (h_col+2)%self.cols),
-                   ((h_row+1)%self.rows, (h_col-2)%self.cols),                                           ((h_row+1)%self.rows, (h_col+2)%self.cols),
-                   ((h_row+2)%self.rows, (h_col-1)%self.cols), ((h_row+2)%self.rows, (h_col)%self.cols), ((h_row+2)%self.rows, (h_col+1)%self.cols) ]
+        shield = set([ ((h_row-2)%self.rows, (h_col-1)%self.cols), ((h_row-2)%self.rows, (h_col)%self.cols), ((h_row-2)%self.rows, (h_col+1)%self.cols),
+                       ((h_row-1)%self.rows, (h_col-2)%self.cols),                                           ((h_row-1)%self.rows, (h_col+2)%self.cols),
+                       ((h_row)%self.rows,   (h_col-2)%self.cols),                                           ((h_row)%self.rows,   (h_col+2)%self.cols),
+                       ((h_row+1)%self.rows, (h_col-2)%self.cols),                                           ((h_row+1)%self.rows, (h_col+2)%self.cols),
+                       ((h_row+2)%self.rows, (h_col-1)%self.cols), ((h_row+2)%self.rows, (h_col)%self.cols), ((h_row+2)%self.rows, (h_col+1)%self.cols) ])
+
+        shield.difference_update(self.water)
 
         d = self.ants.euclidian_distance
         dist = [ (d(loc,hill), loc) for loc in shield ]
         dist.sort()
         return dist
 
+    def get_exit_ways(self, hill):
+        h_row, h_col = hill
+        potencial_exit_ways = [((h_row+1,h_col), 's'), ((h_row-1,h_col), 'n'), ((h_row,h_col+1), 'e'), ((h_row,h_col-1), 'w')]
+
+        exit_ways = []
+        for loc, direction in potencial_exit_ways:
+            if loc not in self.water:
+                next_loc = self.ants.destination(loc, direction)
+                if next_loc not in self.water:
+                    exit_ways.append((loc, direction))
+
+        if len(exit_ways) > 0:
+            return exit_ways
+        else:
+            return potencial_exit_ways
 
 
 
@@ -251,11 +297,14 @@ class MyBot:
 
     def set_hills_areas(self):
         for hill in self.ants.my_hills():
-            h_row, h_col = hill
             self.neighbourhood[hill] = self.get_radius(hill, self.ant_view_area) - self.water
-            self.hill_defending_locations[hill] = set([(h_row+1,h_col+1), (h_row-1,h_col-1), (h_row-1,h_col+1), (h_row+1,h_col-1)]) - self.water
-            self.hill_exitway[hill] = [((h_row+1,h_col), ['s']), ((h_row-1,h_col), ['n']), ((h_row,h_col+1), ['e']), ((h_row,h_col-1), ['w'])]
-            self.hill_shield[hill] = self.get_full_shield(hill)
+            self.hill_defending_locations[hill] = self.get_inner_even_shield(hill)
+            self.hill_exitway[hill] = self.get_exit_ways(hill)
+
+            self.hill_shield[hill] = {}
+            #self.hill_shield[hill]['full'] = self.get_full_shield(hill)
+            self.hill_shield[hill]['inner'] = self.get_inner_shield(hill)
+            self.hill_shield[hill]['outer'] = self.get_outer_shield(hill)
 
     def maintain_ants_at_defending_location(self, initial_n_ants, free_ants):
         my_hills = self.ants.my_hills()
@@ -290,11 +339,9 @@ class MyBot:
         else:
             ideal_def = 0
         for hill in my_hills:
-            for loc, directions in self.hill_exitway[hill]:
+            for loc, direction in self.hill_exitway[hill]:
                 if loc in free_ants:
-                    for direction in directions:
-                        if self.do_move_direction(loc, direction, free_ants):
-                            break
+                    self.do_move_direction(loc, direction, free_ants)
 
             if hill in free_ants:
                 if self.not_spawned_ants >= ideal_def:
@@ -346,24 +393,39 @@ class MyBot:
 
 
     def find_close_food(self, free_ants, time_left, stat_update_turn):
-        if self.fifth_turn == stat_update_turn:
-            ini = time.time()
+        #if self.fifth_turn == stat_update_turn:
+        #    ini = time.time()
 
         # ~1ms/ant
         foods = set(self.ants.food())
         possible_moves = self.possible_moves(self.water)
 
-        if time_left()-self.times_stats['food'] > 20:
-            for ant_loc in free_ants[:]:
-                paths = self.path_finder.BFS(ant_loc, foods-self.food_targets, possible_moves)
-                for path in paths:
-                    if self.do_move_location(ant_loc, path['path'][ant_loc], free_ants):
-                        self.food_targets.add(path['goal'])
-                        self.food_orders[path['path'][ant_loc]] = (path['goal'], path['path'])
-                        self.food_gathering_ants.append(path['path'][ant_loc])
+        #if time_left()-self.times_stats['food'] > 20:
+        for ant_loc in free_ants[:]:
+            paths = self.path_finder.BFS(ant_loc, foods-self.food_targets, possible_moves)
+            for path in paths:
+                if self.do_move_location(ant_loc, path['path'][ant_loc], free_ants):
+                    self.food_targets.add(path['goal'])
+                    self.food_orders[path['path'][ant_loc]] = (path['goal'], path['path'])
+                    self.food_gathering_ants.append(path['path'][ant_loc])
 
-        if self.fifth_turn == stat_update_turn:
-            self.times_stats['food'] = int(1000*(time.time()-ini))+2
+        # if self.fifth_turn == stat_update_turn:
+        #     self.times_stats['food'] = int(1000*(time.time()-ini))+2
+
+    def find_close_food2(self, free_ants, time_left, stat_update_turn):
+        foods = set(self.ants.food()) - self.food_targets
+        possible_moves = self.possible_moves(self.water)
+
+        for food_loc in foods:
+            paths = self.path_finder.BFS(food_loc, free_ants, possible_moves, max_cost=15, backward=True)
+            for path in paths:
+                if self.do_move_location(path['source'], path['path'][path['source']], free_ants):
+                    self.food_targets.add(food_loc)
+                    self.food_orders[path['path'][path['source']]] = (food_loc, path['path'])
+                    self.food_gathering_ants.append(path['path'][path['source']])
+
+
+
 
     def attack_enemy_hills(self, free_ants, time_left, stat_update_turn):
         if self.fifth_turn == stat_update_turn:
@@ -413,9 +475,9 @@ class MyBot:
                             break2 = True
                             break
                     except KeyError, e:
-                        #pass
-                        print(path)
-                        print(ant_loc)
+                        pass
+                        #print(path)
+                        #print(ant_loc)
 
                 if break2:
                     break
@@ -428,19 +490,20 @@ class MyBot:
         for hill in self.ants.my_hills():
             enemys_near_hill = set(self.ants.enemy_ants_nn()) & self.neighbourhood[hill]
             if len(enemys_near_hill) > 1:
-                shield = self.hill_shield[hill][:]
-                #if self.not_spawned_ants > 10: # if hidden ants, expand shield to let them out
-                #    shield.reverse()
+                possible_moves = self.possible_moves(self.water | set([hill]))
+                shield_levels = ['inner','outer']
 
-                possible_moves = self.possible_moves(self.water | set(self.ants.my_hills()))
-                for dist, loc in shield:
-                    if loc in free_ants: # if there is an ant, stay there
-                        free_ants.remove(loc)
-                        self.prox_dest.add(loc)
-                    else: # search close ants and move it there
-                        paths = self.path_finder.BFS(loc, free_ants, possible_moves, max_cost=20, backward=True)
-                        for path in paths:
-                            self.do_move_location(path['source'], path['path'][path['source']], free_ants)
+                for shield_level in shield_levels:
+                    shield = self.hill_shield[hill][shield_level][:]
+
+                    for dist, loc in shield:
+                        if loc in free_ants: # if there is an ant, stay there
+                            free_ants.remove(loc)
+                            self.prox_dest.add(loc)
+                        else: # search close ants and move it there
+                            paths = self.path_finder.BFS(loc, free_ants, possible_moves, max_cost=20, backward=True)
+                            for path in paths:
+                                self.do_move_location(path['source'], path['path'][path['source']], free_ants)
 
             else:
                 for enemy_ant in enemys_near_hill:
@@ -476,9 +539,10 @@ class MyBot:
                             if self.do_move_direction(ant_loc, direction, free_ants):
                                 break
                         # and call for help
-                        #close_ants = self.path_finder.BFS(ant_loc, set(free_ants)-set([ant_loc]), self.possible_moves(self.water), 3, 10, True)
-                        #for ant_path in close_ants:
-                        #    self.do_move_location(ant_path[2], ant_path[1][ant_path[2]], free_ants)
+                        close_ants_paths = self.path_finder.BFS(ant_loc, set(free_ants)-set([ant_loc]), self.possible_moves(self.water), num=3, backward=True)
+                        for ant_path in close_ants_paths:
+                            if ant_path['source'] in free_ants:
+                                self.do_move_location(ant_path['source'], ant_path['path'][ant_path['source']], free_ants)
 
             elif len(around_enemys) > 1:
                 friends_around = self.get_radius(ant_loc, self.ant_defend_area).intersection(free_ants) # included ant_loc
