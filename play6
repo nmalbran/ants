@@ -3,4 +3,4 @@
 map=$1
 turns=$2
 
-python tools/playgame.py "python MyBot.py" --turntime 500 --loadtime 3000 --food_rate 5 11 --food_turn 19 37 --food_visible 3 5 --map_file $map --log_dir game_logs --turns $turns --player_seed 7 --verbose -e "python tools/sample_bots/python/HunterBot.py" "python tools/sample_bots/python/HunterBot.py" "python tools/sample_bots/python/HunterBot.py" "python tools/sample_bots/python/HunterBot.py" "python tools/sample_bots/python/HunterBot.py"
+python tools/playgame.py "python TestBot.py" --turntime 500 --loadtime 3000 --food_rate 5 11 --food_turn 19 37 --food_visible 3 5 --map_file $map --log_dir game_logs --turns $turns --player_seed 7 --verbose -e "python tools/sample_bots/python/HunterBot.py" "python tools/sample_bots/python/HunterBot.py" "python tools/sample_bots/python/HunterBot.py" "python tools/sample_bots/python/HunterBot.py" "python tools/sample_bots/python/HunterBot.py"
