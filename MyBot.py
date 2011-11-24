@@ -8,6 +8,9 @@ from math import sqrt
 import time
 import sys
 
+from SimpleExploreMap import SimpleExploreMap
+import DiffusionMap
+
 class MyBot:
     def __init__(self):
         self.path_finder = PathFinder()
@@ -42,7 +45,9 @@ class MyBot:
         self.cols = ants.cols
         #random.seed(ants.player_seed)
 
-        self.explore_map = ExploreMap(self.rows, self.cols, 3, ants.viewradius2)
+        #self.explore_map = ExploreMap(self.rows, self.cols, 3, ants.viewradius2)
+        #self.explore_map = DiffusionMap.DiffusionMap(self.rows, self.cols, ants.viewradius2)
+        self.explore_map = SimpleExploreMap(self.rows, self.cols)
 
         # precalculate squares around an ant, of radius sqrt(rad2)
         def get_pre_radius(rad2):
@@ -123,10 +128,10 @@ class MyBot:
         if time_left() < 25:
             return
 
-        self.continue_with_explore_orders(free_ants)
+        #self.continue_with_explore_orders(free_ants)
         #if self.fifth_turn == 4:
         #    print("time left before explore: "+str(time_left()))
-        self.explore(free_ants, time_left, 3)
+        self.explore2(free_ants, time_left, 3)
 
         if time_left() < 20:
             return
@@ -485,6 +490,19 @@ class MyBot:
     #if self.fifth_turn == stat_update_turn:
         self.times_stats['unseen'] = int(1000*(time.time()-ini))/num +2
         #print("unseen: "+str(self.times_stats['unseen']))
+
+
+
+    def explore2(self, free_ants, time_left, stat_update_turn):
+        #goal = DiffusionMap.EXPLORE
+        for ant_loc in free_ants[:]:
+            new_locs = self.explore_map.get_higher_locs(ant_loc)
+            for val, new_loc in new_locs:
+                if self.do_move_location(ant_loc, new_loc, free_ants):
+                    break
+
+
+
 
     def defend_my_hills(self, free_ants):
         for hill in self.ants.my_hills():
