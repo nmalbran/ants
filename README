@@ -1,0 +1,8 @@
+Bot written in python for AI Challenge 2011
+
+scripts in Bash are shorthand for testing
+
+**Map.py are intent of map exploring
+
+MyBoy.py has the primary logic
+PathFinder.py has the function for path finding
